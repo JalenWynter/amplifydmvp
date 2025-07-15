@@ -1,0 +1,264 @@
+'use client';
+
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { Loader2, UploadCloud, User, CreditCard, Music, FileAudio, CheckCircle } from "lucide-react";
+import { getReviewers, Reviewer, ReviewPackage, uploadFile } from "@/lib/firebase/services";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card";
+import { createCheckoutSession } from "@/app/actions/stripe";
+import { Separator } from "../ui/separator";
+
+const submissionSchema = z.object({
+  artistName: z.string().min(2, { message: "Artist name must be at least 2 characters." }),
+  songTitle: z.string().min(2, { message: "Song title must be at least 2 characters." }),
+  contactEmail: z.string().email({ message: "Please enter a valid email address." }),
+  genre: z.string().min(1, "Please select a genre."),
+  musicFile: z.any().refine(file => file?.length == 1, "Music file is required."),
+  reviewerId: z.string().min(1, "Please select a reviewer."),
+  packageId: z.string().min(1, "Please select a package."),
+});
+
+type SubmissionFormValues = z.infer<typeof submissionSchema>;
+
+export default function SubmissionForm() {
+  const { toast } = useToast();
+  const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [fileName, setFileName] = useState('');
+  const [reviewers, setReviewers] = useState<Reviewer[]>([]);
+  const [selectedReviewer, setSelectedReviewer] = useState<Reviewer | null>(null);
+  const [selectedPackage, setSelectedPackage] = useState<ReviewPackage | null>(null);
+
+  useEffect(() => {
+    const fetchReviewers = async () => {
+        const fetchedReviewers = await getReviewers();
+        setReviewers(fetchedReviewers);
+    }
+    fetchReviewers();
+  }, []);
+  
+
+  const form = useForm<SubmissionFormValues>({
+    resolver: zodResolver(submissionSchema),
+    defaultValues: {
+      artistName: "",
+      songTitle: "",
+      contactEmail: "",
+      genre: "",
+      reviewerId: "",
+      packageId: "",
+    },
+  });
+
+  const fileRef = form.register("musicFile");
+  const reviewerId = form.watch('reviewerId');
+  const packageId = form.watch('packageId');
+
+  useEffect(() => {
+    const reviewer = reviewers.find(r => r.id === reviewerId) || null;
+    setSelectedReviewer(reviewer);
+    form.setValue('packageId', ''); // Reset package selection when reviewer changes
+    setSelectedPackage(null);
+  }, [reviewerId, reviewers, form]);
+
+  useEffect(() => {
+    const pkg = selectedReviewer?.packages.find(p => p.id === packageId) || null;
+    setSelectedPackage(pkg);
+  }, [packageId, selectedReviewer]);
+
+
+  async function onSubmit(data: SubmissionFormValues) {
+    setIsSubmitting(true);
+    
+    if (!selectedReviewer || !selectedPackage) {
+        toast({ title: "Please select a reviewer and a package.", variant: "destructive" });
+        setIsSubmitting(false);
+        return;
+    }
+
+    try {
+      // Step 1: Upload the file to Firebase Storage.
+      const file: File = data.musicFile[0];
+      toast({ title: "Uploading your track..." });
+      const audioUrl = await uploadFile(file);
+      
+      toast({ title: "Track uploaded! Redirecting to payment..." });
+
+      // Step 2: Create a Stripe Checkout Session
+      const checkoutResult = await createCheckoutSession({
+            priceInCents: selectedPackage.priceInCents,
+            productName: `Review: ${selectedPackage.name} by ${selectedReviewer.name}`,
+            productDescription: `Feedback for '${data.songTitle}'`,
+            metadata: {
+              artistName: data.artistName,
+              songTitle: data.songTitle,
+              contactEmail: data.contactEmail,
+              audioUrl: audioUrl,
+              genre: data.genre,
+              reviewerId: data.reviewerId,
+              packageId: data.packageId,
+            }
+          });
+
+      if (checkoutResult.error || !checkoutResult.url) {
+        throw new Error(checkoutResult.error || 'Failed to create checkout session.');
+      }
+      
+      // Step 3: Redirect user to Stripe
+      router.push(checkoutResult.url);
+
+    } catch (error: any) {
+      console.error("Submission failed:", error);
+      toast({
+        title: "Submission Failed",
+        description: error.message || "There was an error submitting your track. Please try again.",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <Card className="w-full">
+         <CardHeader>
+            <CardTitle>Submit Your Track</CardTitle>
+            <CardDescription>Fill out the form to get your music in front of our reviewers.</CardDescription>
+        </CardHeader>
+        <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)}>
+                <CardContent className="space-y-6">
+                    <div className="space-y-4 p-4 rounded-lg border bg-muted/50">
+                        <div className="flex items-start gap-3">
+                             <div className="p-2 bg-primary/10 rounded-full flex-shrink-0 mt-1">
+                                <User className="w-5 h-5 text-primary" />
+                            </div>
+                            <div>
+                                <h3 className="font-semibold">Artist & Track Info</h3>
+                                <div className="grid md:grid-cols-2 gap-4 mt-2">
+                                    <FormField control={form.control} name="artistName" render={({ field }) => ( <FormItem><FormControl><Input placeholder="Artist Name" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={form.control} name="songTitle" render={({ field }) => ( <FormItem><FormControl><Input placeholder="Song Title" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={form.control} name="contactEmail" render={({ field }) => ( <FormItem><FormControl><Input type="email" placeholder="Contact Email" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={form.control} name="genre" render={({ field }) => (
+                                        <FormItem>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <FormControl><SelectTrigger><SelectValue placeholder="Select Genre" /></SelectTrigger></FormControl>
+                                                <SelectContent>
+                                                    <SelectItem value="Pop">Pop</SelectItem>
+                                                    <SelectItem value="Rock/Indie">Rock/Indie</SelectItem>
+                                                    <SelectItem value="Hip-Hop/R&B">Hip-Hop/R&B</SelectItem>
+                                                    <SelectItem value="Electronic">Electronic</SelectItem>
+                                                    <SelectItem value="Acoustic">Acoustic</SelectItem>
+                                                    <SelectItem value="Other">Other</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                     <div className="space-y-4 p-4 rounded-lg border bg-muted/50">
+                        <div className="flex items-start gap-3">
+                            <div className="p-2 bg-primary/10 rounded-full flex-shrink-0 mt-1">
+                                <FileAudio className="w-5 h-5 text-primary" />
+                            </div>
+                            <div>
+                                <h3 className="font-semibold">Upload Your Music</h3>
+                                 <FormField control={form.control} name="musicFile" render={({ field }) => (
+                                    <FormItem className="mt-2">
+                                    <FormControl>
+                                        <div className="relative">
+                                        <Input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept=".mp3,.wav,.m4a" {...fileRef}
+                                            onChange={(e) => {
+                                                field.onChange(e.target.files);
+                                                setFileName(e.target.files?.[0]?.name ?? '');
+                                            }} />
+                                        <div className="flex items-center justify-center w-full h-24 border-2 border-dashed rounded-md cursor-pointer hover:bg-muted/80">
+                                            <div className="text-center">
+                                                <UploadCloud className="w-8 h-8 mx-auto text-muted-foreground" />
+                                                <p className="mt-2 text-sm text-muted-foreground">
+                                                    {fileName ? <span className="text-primary font-medium">{fileName}</span> : 'Click or drag to upload'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        </div>
+                                    </FormControl>
+                                    <FormMessage />
+                                    </FormItem>
+                                )} />
+                            </div>
+                        </div>
+                    </div>
+                    <div className="space-y-4 p-4 rounded-lg border bg-muted/50">
+                        <div className="flex items-start gap-3">
+                             <div className="p-2 bg-primary/10 rounded-full flex-shrink-0 mt-1">
+                                <CheckCircle className="w-5 h-5 text-primary" />
+                            </div>
+                            <div>
+                                <h3 className="font-semibold">Choose Your Reviewer & Package</h3>
+                                <div className="grid md:grid-cols-2 gap-4 mt-2">
+                                     <FormField control={form.control} name="reviewerId" render={({ field }) => (
+                                        <FormItem>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={reviewers.length === 0}>
+                                                <FormControl><SelectTrigger><SelectValue placeholder="Select a Reviewer" /></SelectTrigger></FormControl>
+                                                <SelectContent>
+                                                    {reviewers.map(reviewer => (
+                                                        <SelectItem key={reviewer.id} value={reviewer.id}>{reviewer.name}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
+                                    <FormField control={form.control} name="packageId" render={({ field }) => (
+                                        <FormItem>
+                                            <Select onValueChange={field.onChange} value={field.value} disabled={!selectedReviewer}>
+                                                <FormControl><SelectTrigger><SelectValue placeholder="Select a Package" /></SelectTrigger></FormControl>
+                                                <SelectContent>
+                                                    {selectedReviewer?.packages.map(pkg => (
+                                                        <SelectItem key={pkg.id} value={pkg.id}>
+                                                            {pkg.name} - ${(pkg.priceInCents / 100).toFixed(2)}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </CardContent>
+                <CardFooter className="flex-col items-stretch gap-4">
+                    <Separator />
+                     <div className="flex justify-between font-bold text-lg">
+                        <span>Total</span>
+                        <span>${selectedPackage ? (selectedPackage.priceInCents / 100).toFixed(2) : '0.00'}</span>
+                    </div>
+                    <Button type="submit" className="w-full bg-accent hover:bg-accent/90" size="lg" disabled={isSubmitting}>
+                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}
+                        Proceed to Payment
+                    </Button>
+                </CardFooter>
+            </form>
+        </Form>
+    </Card>
+  );
+}
