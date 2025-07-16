@@ -6,13 +6,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Clock, Globe, Linkedin, Twitter, Music, Star, Loader2, BarChart3, FileText, Mic, Film, Package } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { createCheckoutSession } from "@/app/actions/stripe";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, use } from "react";
 import { Reviewer, ReviewPackage, getReviewerById } from "@/lib/firebase/services";
 
 const formatIcons: { [key: string]: React.ElementType } = {
@@ -70,7 +71,8 @@ function ReviewerProfileSkeleton() {
 }
 
 
-export default function ReviewerProfilePage({ params }: { params: { id: string } }) {
+export default function ReviewerProfilePage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params);
   const [reviewer, setReviewer] = useState<Reviewer | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -81,12 +83,12 @@ export default function ReviewerProfilePage({ params }: { params: { id: string }
   useEffect(() => {
     const fetchReviewer = async () => {
         setIsLoading(true);
-        const fetchedReviewer = await getReviewerById(params.id);
+        const fetchedReviewer = await getReviewerById(resolvedParams.id);
         setReviewer(fetchedReviewer);
         setIsLoading(false);
     }
     fetchReviewer();
-  }, [params.id]);
+  }, [resolvedParams.id]);
 
 
   const handleSelectPackage = (pkg: ReviewPackage) => {

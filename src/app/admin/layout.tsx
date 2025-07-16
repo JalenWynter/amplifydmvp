@@ -21,8 +21,19 @@ import Link from 'next/link';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 
+interface NavItem {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  subpath?: string;
+}
 
-const adminNavGroups = [
+interface NavGroup {
+  title: string;
+  items: NavItem[];
+}
+
+const adminNavGroups: NavGroup[] = [
   {
     title: 'Platform',
     items: [

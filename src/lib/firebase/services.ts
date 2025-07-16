@@ -341,7 +341,7 @@ export async function getPayoutById(id: string): Promise<Payout | null> {
   const docRef = doc(db, "payouts", id);
   const docSnap = await getDoc(docRef);
   if (docSnap.exists()) {
-    return { id: docSnap.id, ...doc.data() } as Payout;
+    return { id: docSnap.id, ...docSnap.data() } as Payout;
   }
   return null;
 }
@@ -484,12 +484,12 @@ export async function getSubmissions(options: { all?: boolean } = {}): Promise<S
   console.log(`Fetching submissions from Firestore (all: ${!!options.all})...`);
   const submissionsCol = collection(db, "submissions");
   
-  const queryConstraints = [orderBy("submittedAt", "desc")];
-  if (!options.all) {
-      queryConstraints.unshift(where("status", "==", "Pending Review"));
+  let q;
+  if (options.all) {
+      q = query(submissionsCol, orderBy("submittedAt", "desc"));
+  } else {
+      q = query(submissionsCol, where("status", "==", "Pending Review"), orderBy("submittedAt", "desc"));
   }
-  
-  const q = query(submissionsCol, ...queryConstraints);
   const querySnapshot = await getDocs(q);
   
   const submissions = querySnapshot.docs.map(doc => ({

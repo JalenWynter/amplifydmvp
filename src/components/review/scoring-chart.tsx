@@ -42,7 +42,7 @@ const allFactorIds = Object.values(scoringFactors).flat().map(f => f.id);
 const schemaObject = allFactorIds.reduce((acc, id) => {
   acc[id] = z.number().min(0).max(10);
   return acc;
-}, {} as Record<string, z.ZodNumber>);
+}, {} as Record<string, any>);
 
 schemaObject.strengths = z.string().min(50, 'Please provide at least 50 characters on strengths.');
 schemaObject.improvements = z.string().min(50, 'Please provide at least 50 characters on areas for improvement.');

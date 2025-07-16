@@ -10,7 +10,7 @@ import { ArrowLeft, CheckCircle, Clock, CreditCard, Loader2 } from "lucide-react
 import Link from "next/link";
 import { getPayoutById, Payout, updatePayoutStatus } from "@/lib/firebase/services";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, use } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { getStatusBadgeVariant } from "@/components/ui/badge";
@@ -63,16 +63,17 @@ function PayoutDetailSkeleton() {
     )
 }
 
-export default function PayoutDetailPage({ params }: { params: { payoutId: string } }) {
+export default function PayoutDetailPage({ params }: { params: Promise<{ payoutId: string }> }) {
+  const resolvedParams = use(params);
   const [payout, setPayout] = useState<Payout | null | undefined>(undefined);
   const [isUpdating, setIsUpdating] = useState(false);
   const { toast } = useToast();
 
   const fetchPayout = useCallback(async () => {
     setPayout(undefined); // Set to loading state
-    const fetchedPayout = await getPayoutById(params.payoutId);
+    const fetchedPayout = await getPayoutById(resolvedParams.payoutId);
     setPayout(fetchedPayout);
-  }, [params.payoutId]);
+  }, [resolvedParams.payoutId]);
 
   useEffect(() => {
     fetchPayout();

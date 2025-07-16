@@ -35,7 +35,7 @@ const packageSchema = z.object({
   priceInCents: z.coerce.number().min(500, "Price must be at least $5.00."),
   description: z.string().min(20, "Description must be at least 20 characters.").max(200, "Description cannot exceed 200 characters."),
   trackCount: z.coerce.number().int().min(1, "Must allow at least 1 track."),
-  formats: z.array(z.string()).refine(value => value.some(item => item), {
+  formats: z.array(z.enum(['audio', 'video', 'chart', 'written'])).refine(value => value.length > 0, {
     message: "You have to select at least one format.",
   }),
 });

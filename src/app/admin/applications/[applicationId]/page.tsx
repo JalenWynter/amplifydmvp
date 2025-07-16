@@ -21,7 +21,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { getApplicationById, updateApplicationStatus, Application } from '@/lib/firebase/services';
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function ApplicationDetailSkeleton() {
@@ -51,7 +51,8 @@ function ApplicationDetailSkeleton() {
     );
 }
 
-export default function ApplicationDetailPage({ params }: { params: { applicationId: string } }) {
+export default function ApplicationDetailPage({ params }: { params: Promise<{ applicationId: string }> }) {
+  const resolvedParams = use(params);
   const { toast } = useToast();
   const router = useRouter();
   
@@ -60,11 +61,11 @@ export default function ApplicationDetailPage({ params }: { params: { applicatio
 
   useEffect(() => {
     const fetchApplication = async () => {
-      const app = await getApplicationById(params.applicationId);
+      const app = await getApplicationById(resolvedParams.applicationId);
       setApplication(app);
     };
     fetchApplication();
-  }, [params.applicationId]);
+  }, [resolvedParams.applicationId]);
 
   const handleStatusUpdate = async (status: 'Approved' | 'Rejected') => {
     if (!application) return;

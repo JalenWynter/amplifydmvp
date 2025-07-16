@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { getSubmissionById, Submission, submitReview } from "@/lib/firebase/services";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Headphones, Music, Loader2, Video, Mic, ShieldX } from "lucide-react";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, use } from "react";
 import { Form } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
@@ -54,7 +54,8 @@ function ReviewSkeleton() {
   );
 }
 
-export default function ReviewSubmissionPage({ params }: { params: { submissionId: string } }) {
+export default function ReviewSubmissionPage({ params }: { params: Promise<{ submissionId: string }> }) {
+  const resolvedParams = use(params);
   const [submission, setSubmission] = useState<Submission | null | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -68,7 +69,7 @@ export default function ReviewSubmissionPage({ params }: { params: { submissionI
       sound_quality: 5, mixing: 5, sound_design: 5, mastering: 5,
       commercial_potential: 5, target_audience: 5, branding: 5, uniqueness: 5,
       strengths: '', improvements: '', summary: ''
-    }
+    } as any
   });
 
   const scores = form.watch();
@@ -87,11 +88,11 @@ export default function ReviewSubmissionPage({ params }: { params: { submissionI
   useEffect(() => {
     const fetchSubmission = async () => {
       setSubmission(undefined); // Start in loading state
-      const sub = await getSubmissionById(params.submissionId);
+      const sub = await getSubmissionById(resolvedParams.submissionId);
       setSubmission(sub);
     }
     fetchSubmission();
-  }, [params.submissionId]);
+  }, [resolvedParams.submissionId]);
 
   const onSubmit = async (data: ReviewFormValues) => {
     if (!submission) {

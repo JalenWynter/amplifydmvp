@@ -46,6 +46,7 @@ export async function createCheckoutSession(payload: CheckoutSessionPayload): Pr
                 audioUrl: metadata.audioUrl,
                 genre: metadata.genre,
                 reviewerId: metadata.reviewerId,
+                packageId: metadata.packageId,
             });
             console.log('--- DEVELOPMENT MODE: Submission successfully created for testing. ---');
         } catch (error) {
