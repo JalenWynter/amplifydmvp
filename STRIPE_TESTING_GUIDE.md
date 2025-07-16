@@ -11,8 +11,8 @@ This guide walks you through testing the complete Stripe payment flow with fake 
 Ensure your `.env.local` file contains:
 ```bash
 # Stripe Keys (Test Mode)
-STRIPE_SECRET_KEY=sk_test_51Ri3RzFSxDMBV1zfKF2TtP50QsqVI2ELjVVtct0DlKWLqrItzaZ4u1HvEeLtAcCybzxEwjN1lsem3no6DPYRNUq100nSrTTetZ
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_51Ri3RzFSxDMBV1zf9aBAnZOiFVlWaVqMM8mmof7LcSDvHCM0TRGLl1F2tiwWFWORbqwDx2tm0aPqvohPH8rDcmeV006yQbpsq8
+STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key_here
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key_here
 
 # Firebase Configuration
 NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key_here
