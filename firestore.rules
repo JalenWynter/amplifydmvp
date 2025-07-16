@@ -4,83 +4,11 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper functions
-    function isSignedIn() {
-      return request.auth != null;
+    // TEMPORARY: Open rules for development seeding
+    // TODO: Remove this before production deployment
+    match /{document=**} {
+      allow read, write: if true;
     }
-
-    function isRole(role) {
-        // Check if the user document exists and has the specified role.
-        return exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
-    }
-
-    function isOwner(userId) {
-        return request.auth.uid == userId;
-    }
-
-    function isAdmin() {
-        // The most secure check: verify the email AND ensure their role in the DB is 'Admin'.
-        return request.auth.token.email == 'jwynterthomas@gmail.com' && isRole('Admin');
-    }
-
-    // Publicly readable collections
-    match /reviewers/{reviewerId} {
-        allow read: if true;
-        // Only admins or the owner of the profile can write
-        allow write: if isAdmin() || isOwner(reviewerId);
-    }
-
-    match /settings/app-config {
-      // ANYONE can read the application mode settings. This is required for the apply page.
-      allow get: if true; 
-      // ONLY admins can change the settings.
-      allow write: if isAdmin();
-    }
-
-    // User-specific data
-    match /users/{userId} {
-      // Only the owner of the document or an admin can read/write user data.
-      allow read, write: if isAdmin() || isOwner(userId);
-    }
-
-    // Authenticated access collections
-    match /submissions/{submissionId} {
-      // Allow create for anyone (anonymous submission)
-      allow create: if true;
-      // Admins and reviewers can read all submissions
-      allow read: if isRole('Admin') || isRole('Reviewer');
-      // Only admins can update the submission status
-      allow update: if isAdmin();
-      // Only admins can delete submissions
-      allow delete: if isAdmin();
-    }
-
-    match /reviews/{reviewId} {
-      // Only reviewers can create reviews
-      allow create: if isRole('Reviewer');
-      // Admins, reviewers, and theoretically the artist could read (future feature)
-      allow read: if isRole('Admin') || isRole('Reviewer');
-      // Reviews are immutable once created
-      allow update, delete: if false; 
-    }
-
-    // Admin-only collections
-    match /applications/{appId} {
-      // Allow create for anyone (anonymous application)
-      allow create: if true;
-      // Only admins can read, update, or delete applications.
-      allow read, update, delete: if isAdmin();
-    }
-
-    match /payouts/{payoutId} {
-      allow list, read, create, update: if isAdmin();
-    }
-
-    match /referralCodes/{codeId} {
-      // Allow admins to manage codes. Anyone can read a code to validate it.
-      allow read: if true;
-      allow create, update, delete: if isAdmin();
-    }
+    
   }
 }
