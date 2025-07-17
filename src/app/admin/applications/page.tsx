@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { MoreHorizontal, FileText, Loader2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { getApplications, updateApplicationStatus, Application } from '@/lib/firebase/services';
+import { getApplications, Application } from '@/lib/firebase/services';
 import { useState, useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -61,15 +61,16 @@ export default function ReviewerApplicationsPage() {
   const handleStatusUpdate = async (app: Application, status: 'Approved' | 'Rejected') => {
     setUpdatingId(app.id);
     try {
-        await updateApplicationStatus(app.id, status);
+        // The approval/rejection logic is now handled on the detail page
+        // This page will simply re-fetch applications to reflect changes
         toast({
-          title: `Application ${status}`,
-          description: `${app.name}'s application has been ${status.toLowerCase()}.`,
+          title: `Action Initiated`,
+          description: `Please go to the application detail page to ${status.toLowerCase()} ${app.name}'s application.`,
         });
         fetchAndSetApplications(); // Re-fetch to update UI
     } catch(error) {
-        console.error("Failed to update application status:", error);
-        toast({ title: "Update Failed", description: "Could not update application status.", variant: "destructive" });
+        console.error("Failed to initiate action:", error);
+        toast({ title: "Action Failed", description: "Could not initiate action.", variant: "destructive" });
     } finally {
         setUpdatingId(null);
     }

@@ -45,3 +45,7 @@ pnpm-debug.log*
 # Firebase
 .firebase/
 firebase-debug.log
+
+# Generated JS and Map files
+src/**/*.js
+src/**/*.js.map

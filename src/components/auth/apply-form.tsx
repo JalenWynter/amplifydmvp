@@ -26,7 +26,6 @@ import { useRouter } from "next/navigation"
 const applySchemaBase = {
   fullName: z.string().min(3, "Full name is required."),
   email: z.string().email("Invalid email address."),
-  password: z.string().min(8, "Password must be at least 8 characters."),
   primaryRole: z.string().min(1, "Please select your primary role."),
   portfolioLink: z.string().url("Please enter a valid URL (e.g., LinkedIn, website).").optional().or(z.literal('')),
   musicBackground: z.string().min(100, "Please provide at least 100 characters about your background."),
@@ -54,7 +53,6 @@ export default function ApplyForm({ appSettings }: { appSettings: AppSettings })
     defaultValues: {
       fullName: "",
       email: "",
-      password: "",
       primaryRole: "",
       portfolioLink: "",
       musicBackground: "",
@@ -77,7 +75,7 @@ export default function ApplyForm({ appSettings }: { appSettings: AppSettings })
         referral: values.referral || '',
       };
       
-      await addApplication(applicationData, values.password);
+      await addApplication(applicationData);
 
       toast({
         title: "Application Submitted!",
@@ -134,17 +132,7 @@ export default function ApplyForm({ appSettings }: { appSettings: AppSettings })
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Password</FormLabel>
-              <FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        
         <FormField
           control={form.control}
           name="primaryRole"

@@ -64,7 +64,7 @@ export async function POST(req: Request) {
         
         // Update transaction with submission ID
         const transaction = await getTransactionBySessionId(session.id);
-        if (transaction) {
+        if (transaction && typeof transaction.id === 'string') {
           await updateTransactionStatus(transaction.id, 'completed', {
             submissionId: submission.id,
           });
@@ -76,7 +76,7 @@ export async function POST(req: Request) {
         
         // Mark transaction as failed
         const transaction = await getTransactionBySessionId(session.id);
-        if (transaction) {
+        if (transaction && typeof transaction.id === 'string') {
           await updateTransactionStatus(transaction.id, 'failed', {
             failureReason: 'Failed to create submission',
             stripeError: (error as Error).message,
@@ -94,7 +94,7 @@ export async function POST(req: Request) {
       
       try {
         const transaction = await getTransactionBySessionId(expiredSession.id);
-        if (transaction) {
+        if (transaction && typeof transaction.id === 'string') {
           await updateTransactionStatus(transaction.id, 'cancelled', {
             failureReason: 'Session expired',
           });
@@ -113,7 +113,7 @@ export async function POST(req: Request) {
         // Find transaction by payment intent ID
         const transactions = await getTransactions();
         const transaction = transactions.find(t => t.stripePaymentIntentId === failedPayment.id);
-        if (transaction) {
+        if (transaction && typeof transaction.id === 'string') {
           await updateTransactionStatus(transaction.id, 'failed', {
             failureReason: 'Payment failed',
             stripeError: failedPayment.last_payment_error?.message || 'Unknown payment error',

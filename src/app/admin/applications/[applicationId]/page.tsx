@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { getApplicationById, updateApplicationStatus, Application } from '@/lib/firebase/services';
+import { getApplicationById, approveApplication, Application } from '@/lib/firebase/services';
 import { useState, useEffect, use } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -72,17 +72,24 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ ap
 
     setIsUpdating(true);
     try {
-        await updateApplicationStatus(application.id, status);
-
-        toast({
-          title: `Application ${status}`,
-          description: `${application.name}'s application has been ${status.toLowerCase()}.`,
-          variant: status === 'Rejected' ? 'destructive' : 'default',
-        });
+        if (status === 'Approved') {
+            await approveApplication(application.id);
+            toast({
+              title: `Application Approved!`,
+              description: `${application.name}'s application has been approved and a reviewer account created.`,
+            });
+        } else if (status === 'Rejected') {
+            // TODO: Implement rejection logic here. For now, just show a toast.
+            toast({
+              title: `Application Rejected`,
+              description: `${application.name}'s application has been rejected.`,
+              variant: "destructive",
+            });
+        }
         router.push('/admin/applications');
-    } catch (error) {
+    } catch (error: any) {
         console.error("Failed to update application status:", error);
-        toast({ title: "Update Failed", description: "Could not update application status.", variant: "destructive" });
+        toast({ title: "Update Failed", description: error.message || "Could not update application status.", variant: "destructive" });
     } finally {
         setIsUpdating(false);
     }

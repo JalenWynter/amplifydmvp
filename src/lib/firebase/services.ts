@@ -2,6 +2,7 @@
 // This file will contain all the functions to interact with Firebase services (Firestore, Storage, etc.)
 import { collection, getDocs, doc, getDoc, setDoc, addDoc, updateDoc, query, orderBy, where, arrayUnion, arrayRemove, writeBatch, limit, deleteDoc, getCountFromServer } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { getFunctions, httpsCallable } from "firebase/functions";
 import { db, auth, storage } from "./client";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { ReviewFormValues } from "@/components/review/scoring-chart";
@@ -220,142 +221,33 @@ export async function getApplicationById(id: string): Promise<Application | null
   }
 }
 
-export async function updateApplicationStatus(id: string, status: typeof APPLICATION_STATUS.APPROVED | typeof APPLICATION_STATUS.REJECTED): Promise<void> {
-    console.log(`Updating application ${id} status to ${status}`);
-    const appRef = doc(db, "applications", id);
-    const appSnap = await getDoc(appRef);
-    if (!appSnap.exists()) {
-        throw new Error("Application not found.");
-    }
-    const appData = appSnap.data() as Application;
+/**
+ * [Callable Function] Approves an application by invoking a Firebase Cloud Function.
+ * This function is the client-side entry point that calls the secure and atomic
+ * server-side `approveApplication` function.
+ *
+ * @param applicationId The ID of the application to approve.
+ */
+export async function approveApplication(applicationId: string): Promise<void> {
+    console.log(`Invoking 'approveApplication' cloud function for application: ${applicationId}`);
 
-    const batch = writeBatch(db);
-    batch.update(appRef, { status: status });
-
-    if (status === APPLICATION_STATUS.APPROVED) {
-        const reviewerRef = doc(db, "reviewers", appData.userId);
-        const reviewerSnap = await getDoc(reviewerRef);
-        
-        // Only create reviewer profile if it doesn't already exist
-        if (!reviewerSnap.exists()) {
-            const reviewerDoc: Omit<Reviewer, 'id'> = {
-                name: appData.name,
-                genres: [], // Default value, can be edited in profile
-                turnaround: '5 days', // Default value
-                experience: appData.musicBackground,
-                avatarUrl: '', // Default value, can be edited in profile
-                packages: []
-            };
-            batch.set(reviewerRef, reviewerDoc);
-            invalidateReviewerCache();
-        }
-    }
-    await batch.commit();
-}
-
-// Production-ready application approval with automatic user creation
-export async function approveApplicationWithUserCreation(
-  applicationId: string, 
-  temporaryPassword?: string
-): Promise<void> {
-  console.log(`Approving application ${applicationId} with user creation...`);
-  
-  const appRef = doc(db, "applications", applicationId);
-  const appSnap = await getDoc(appRef);
-  
-  if (!appSnap.exists()) {
-    throw new Error("Application not found.");
-  }
-  
-  const appData = appSnap.data() as Application;
-  
-  // Generate a secure random password if none provided
-  const password = temporaryPassword || generateSecurePassword();
-  
-  const batch = writeBatch(db);
-  
-  try {
-    // 1. Create Firebase Auth user (if not exists)
-    let firebaseUID: string;
-    
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, appData.email, password);
-      firebaseUID = userCredential.user.uid;
-    } catch (error: any) {
-      if (error.message.includes('already exists')) {
-        // Get existing user's UID - would need server-side admin SDK for this
-        console.log("User already exists in Firebase Auth");
-        throw new Error("User already exists. Please use existing authentication.");
-      }
-      throw error;
-    }
-    
-    // 2. Update application status
-    batch.update(appRef, { 
-      status: APPLICATION_STATUS.APPROVED,
-      userId: firebaseUID // Update with real Firebase UID
-    });
-    
-    // 3. Create user document with real UID
-    const userDoc: Omit<User, 'id'> = {
-      name: appData.name,
-      email: appData.email,
-      role: USER_ROLE.REVIEWER,
-      status: USER_STATUS.ACTIVE,
-      joinedAt: new Date().toISOString(),
-      avatarUrl: ''
-    };
-    
-    batch.set(doc(db, "users", firebaseUID), userDoc);
-    
-    // 4. Create reviewer document with real UID
-    const reviewerDoc: Reviewer = {
-      id: firebaseUID,
-      name: appData.name,
-      avatarUrl: '',
-      dataAiHint: '',
-      turnaround: '3-5 days',
-      genres: [],
-      experience: appData.musicBackground,
-      packages: []
-    };
-    
-    batch.set(doc(db, "reviewers", firebaseUID), reviewerDoc);
-    
-    await batch.commit();
-    
-    console.log(`✅ Application approved and user created with UID: ${firebaseUID}`);
-    
-    // Clear cache
-    invalidateReviewerCache();
-    
-    // TODO: Send email with temporary password
-    console.log(`📧 TODO: Send email to ${appData.email} with temporary password: ${password}`);
-    
-  } catch (error) {
-    console.error("Error approving application:", error);
-    throw error;
-  }
-}
+        const functions = getFunctions(); // Get Firebase Functions instance
+        const approveApplicationCallable = httpsCallable(functions, 'approveApplication');
+        
+        const result = await approveApplicationCallable({ applicationId });
 
-// Helper function to generate secure random password
-function generateSecurePassword(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-  let password = '';
-  
-  // Ensure at least one of each type
-  password += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.charAt(Math.floor(Math.random() * 26)); // Uppercase
-  password += 'abcdefghijklmnopqrstuvwxyz'.charAt(Math.floor(Math.random() * 26)); // Lowercase  
-  password += '0123456789'.charAt(Math.floor(Math.random() * 10)); // Number
-  password += '!@#$%^&*'.charAt(Math.floor(Math.random() * 8)); // Special char
-  
-  // Fill remaining length with random chars
-  for (let i = 4; i < 12; i++) {
-    password += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  
-  // Shuffle the password
-  return password.split('').sort(() => 0.5 - Math.random()).join('');
+        console.log("✅ Application approved successfully.", result.data);
+
+        // Invalidate the local reviewer cache to reflect the new data.
+        invalidateReviewerCache();
+
+    } catch (error: any) {
+        console.error("Error calling 'approveApplication' cloud function:", error);
+        // The error can be inspected for more details, e.g., error.code, error.message
+        // Re-throw the error to be handled by the calling UI.
+        throw new Error(`Failed to approve application: ${error.message}`);
+    }
 }
 
 
@@ -401,10 +293,9 @@ export async function updatePayoutStatus(payoutId: string, status: Payout['statu
 
 // Write operations
 export async function addApplication(
-    applicationData: Omit<Application, 'id' | 'status' | 'submittedAt' | 'userId'>,
-    password: string
+    applicationData: Omit<Application, 'id' | 'status' | 'submittedAt' | 'userId'>
 ): Promise<Application> {
-    console.log("Creating user and adding new application to Firestore...");
+    console.log("Adding new application to Firestore...");
 
     // Check application mode
     const settings = await getAppSettings();
@@ -436,37 +327,20 @@ export async function addApplication(
         }
     }
 
-
-    // 1. Create the user in Firebase Auth
-    const userCredential = await createUserWithEmailAndPassword(auth, applicationData.email, password);
-    const user = userCredential.user;
-
     const batch = writeBatch(db);
 
-    // 2. Create the application document in Firestore
+    // Create the application document in Firestore
     const appWithDetails = {
         ...applicationData,
-        userId: user.uid, // Link application to the created user
+        userId: null, // userId will be set upon approval
         status: APPLICATION_STATUS.PENDING_REVIEW,
         submittedAt: new Date().toISOString(),
     };
 
     const appDocRef = doc(collection(db, "applications"));
     batch.set(appDocRef, appWithDetails);
-    
-    // 3. Create a corresponding user document in the 'users' collection
-    const userDoc: Omit<User, 'id'> = {
-        name: applicationData.name,
-        email: applicationData.email,
-        role: USER_ROLE.REVIEWER, // Default role upon application
-        status: USER_STATUS.ACTIVE, // User is active, but application is pending
-        joinedAt: new Date().toISOString(),
-        avatarUrl: '' // Can be set later
-    }
-    const userDocRef = doc(db, "users", user.uid);
-    batch.set(userDocRef, userDoc);
 
-    // 4. If an invite code was used and valid, mark it as 'Used'
+    // If an invite code was used and valid, mark it as 'Used'
     if (settings.applicationMode === APPLICATION_MODE.INVITE_ONLY && applicationData.referral) {
         const codesRef = collection(db, "referralCodes");
         const q = query(codesRef, where("code", "==", applicationData.referral), limit(1));
