@@ -7,7 +7,7 @@ export default function LoginPage() {
     <div className="flex items-center justify-center py-12">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold font-headline">Reviewer & Admin Login</CardTitle>
+          <CardTitle className="text-2xl font-bold font-headline">Reviewer Login</CardTitle>
           <CardDescription>
             Access your dashboard to review submissions.
           </CardDescription>

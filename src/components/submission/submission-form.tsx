@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import { Loader2, UploadCloud, User, CreditCard, Music, FileAudio, CheckCircle } from "lucide-react";
 import { getReviewers, Reviewer, ReviewPackage, uploadFile } from "@/lib/firebase/services";
@@ -38,11 +38,16 @@ type SubmissionFormValues = z.infer<typeof submissionSchema>;
 export default function SubmissionForm() {
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fileName, setFileName] = useState('');
   const [reviewers, setReviewers] = useState<Reviewer[]>([]);
   const [selectedReviewer, setSelectedReviewer] = useState<Reviewer | null>(null);
   const [selectedPackage, setSelectedPackage] = useState<ReviewPackage | null>(null);
+
+  // Get pre-selected reviewer and package from URL parameters
+  const preselectedReviewerId = searchParams.get('reviewerId');
+  const preselectedPackageId = searchParams.get('packageId');
 
   useEffect(() => {
     const fetchReviewers = async () => {
@@ -51,7 +56,6 @@ export default function SubmissionForm() {
     }
     fetchReviewers();
   }, []);
-  
 
   const form = useForm<SubmissionFormValues>({
     resolver: zodResolver(submissionSchema),
@@ -60,10 +64,20 @@ export default function SubmissionForm() {
       songTitle: "",
       contactEmail: "",
       genre: "",
-      reviewerId: "",
-      packageId: "",
+      reviewerId: preselectedReviewerId || "",
+      packageId: preselectedPackageId || "",
     },
   });
+
+  // Initialize form with pre-selected values when reviewers are loaded
+  useEffect(() => {
+    if (reviewers.length > 0 && preselectedReviewerId) {
+      form.setValue('reviewerId', preselectedReviewerId);
+      if (preselectedPackageId) {
+        form.setValue('packageId', preselectedPackageId);
+      }
+    }
+  }, [reviewers, preselectedReviewerId, preselectedPackageId, form]);
 
   const fileRef = form.register("musicFile");
   const reviewerId = form.watch('reviewerId');
@@ -72,14 +86,41 @@ export default function SubmissionForm() {
   useEffect(() => {
     const reviewer = reviewers.find(r => r.id === reviewerId) || null;
     setSelectedReviewer(reviewer);
-    form.setValue('packageId', ''); // Reset package selection when reviewer changes
-    setSelectedPackage(null);
-  }, [reviewerId, reviewers, form]);
+    
+    // Only reset package selection if it's a manual change (not pre-selected)
+    if (reviewerId !== preselectedReviewerId) {
+      form.setValue('packageId', '');
+      setSelectedPackage(null);
+    }
+  }, [reviewerId, reviewers, form, preselectedReviewerId]);
 
   useEffect(() => {
     const pkg = selectedReviewer?.packages.find(p => p.id === packageId) || null;
     setSelectedPackage(pkg);
   }, [packageId, selectedReviewer]);
+
+  useEffect(() => {
+    const reviewerIdParam = searchParams.get('reviewerId');
+    const packageIdParam = searchParams.get('packageId');
+
+    if (reviewerIdParam) {
+      const reviewer = reviewers.find(r => r.id === reviewerIdParam);
+      if (reviewer) {
+        form.setValue('reviewerId', reviewer.id);
+        setSelectedReviewer(reviewer);
+        form.setValue('packageId', ''); // Reset package selection when reviewer changes
+        setSelectedPackage(null);
+      }
+    }
+
+    if (packageIdParam) {
+      const pkg = selectedReviewer?.packages.find(p => p.id === packageIdParam);
+      if (pkg) {
+        form.setValue('packageId', pkg.id);
+        setSelectedPackage(pkg);
+      }
+    }
+  }, [searchParams, reviewers, selectedReviewer]);
 
 
   async function onSubmit(data: SubmissionFormValues) {

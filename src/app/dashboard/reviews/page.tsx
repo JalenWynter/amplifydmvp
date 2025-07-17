@@ -82,9 +82,9 @@ export default function ReviewsPage() {
                         ) : reviews.length > 0 ? (
                             reviews.map((rev) => (
                                 <TableRow key={rev.id}>
-                                    <TableCell className="font-medium">{rev.submissionDetails.artistName}</TableCell>
-                                    <TableCell>{rev.submissionDetails.songTitle}</TableCell>
-                                    <TableCell>{new Date(rev.createdAt).toLocaleDateString()}</TableCell>
+                                    <TableCell className="font-medium max-w-[200px] truncate" title={rev.submissionDetails.artistName}>{rev.submissionDetails.artistName}</TableCell>
+                                    <TableCell className="max-w-[250px] truncate" title={rev.submissionDetails.songTitle}>{rev.submissionDetails.songTitle}</TableCell>
+                                    <TableCell className="min-w-[100px]">{new Date(rev.createdAt).toLocaleDateString()}</TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-1.5">
                                             <Star className="w-4 h-4 text-yellow-400 fill-current" />

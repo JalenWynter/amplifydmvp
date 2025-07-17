@@ -10,7 +10,7 @@ export default function ApiLogsPage() {
                     <CardTitle>API & Server Logs</CardTitle>
                 </div>
                 <CardDescription>
-                    This is a placeholder for a UI to view logs from your server functions and API endpoints.
+                    Server function and API endpoint logs will be displayed here.
                 </CardDescription>
             </CardHeader>
             <CardContent>

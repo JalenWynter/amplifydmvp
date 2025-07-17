@@ -23,6 +23,11 @@ export default function SubmitSuccessPage() {
             <p className="text-muted-foreground">
               Thank you for trusting Amplifyd. You'll receive an email at the address you provided once your review is complete. This typically takes 3-5 business days.
             </p>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-800">
+                📧 <strong>Important:</strong> Your email will contain a secure link to view your detailed review, including scores, feedback, and recommendations.
+              </p>
+            </div>
             <p className="font-semibold">Keep an eye on your inbox!</p>
           </CardContent>
           <CardFooter>

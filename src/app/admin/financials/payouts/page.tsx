@@ -99,7 +99,24 @@ export default function PayoutsPage() {
     }
 
     return (
-        <>
+        <div className="space-y-6">
+            <div className="flex items-center justify-between">
+                <h1 className="text-3xl font-bold font-headline">Payouts</h1>
+                <div className="flex gap-2">
+                    <Link href="/admin/financials">
+                        <button className="px-4 py-2 text-sm font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200">
+                            Overview
+                        </button>
+                    </Link>
+                    <Link href="/admin/financials/transactions">
+                        <button className="px-4 py-2 text-sm font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200">
+                            Transactions
+                        </button>
+                    </Link>
+                </div>
+            </div>
+            
+            <>
             {isFormOpen && (
                 <CreatePayoutForm
                     reviewers={reviewers}
@@ -176,5 +193,6 @@ export default function PayoutsPage() {
                 </CardContent>
             </Card>
         </>
+        </div>
     )
 }

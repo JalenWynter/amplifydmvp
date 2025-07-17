@@ -70,18 +70,18 @@ export default function PaymentPage() {
                     <div className="p-3 bg-accent/20 rounded-lg">
                         <Music className="w-6 h-6 text-accent" />
                     </div>
-                    <div>
+                    <div className="min-w-0 flex-1">
                         <p className="text-sm text-muted-foreground">Artist</p>
-                        <p className="font-semibold">{submissionDetails.artistName}</p>
+                        <p className="font-semibold break-words" title={submissionDetails.artistName}>{submissionDetails.artistName}</p>
                     </div>
                 </div>
                  <div className="flex items-start gap-4">
                     <div className="p-3 bg-accent/20 rounded-lg">
                         <FileAudio className="w-6 h-6 text-accent" />
                     </div>
-                    <div>
+                    <div className="min-w-0 flex-1">
                         <p className="text-sm text-muted-foreground">Track</p>
-                        <p className="font-semibold">{submissionDetails.songTitle}</p>
+                        <p className="font-semibold break-words" title={submissionDetails.songTitle}>{submissionDetails.songTitle}</p>
                     </div>
                 </div>
             </div>

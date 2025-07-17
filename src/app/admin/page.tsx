@@ -171,7 +171,7 @@ export default function AdminPage() {
                     <CardHeader>
                         <CardTitle>Recent Activity</CardTitle>
                         <CardDescription>
-                            This is a placeholder for a real-time activity feed.
+                            Activity feed will show recent platform events and actions.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>

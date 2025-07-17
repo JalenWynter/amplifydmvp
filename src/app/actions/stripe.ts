@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import Stripe from 'stripe';
-import { createSubmissionFromWebhook } from '@/lib/firebase/services';
+import { createSubmissionFromWebhook, createTransaction } from '@/lib/firebase/services';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -31,31 +31,8 @@ export async function createCheckoutSession(payload: CheckoutSessionPayload): Pr
         return { error: 'Stripe secret key is not configured.' };
     }
 
-    // --- DEVELOPMENT ONLY SIMULATION ---
-    // In a development environment where we can't easily test webhooks,
-    // we'll create the submission record immediately to allow for end-to-end testing.
-    // In production, this block will be skipped, and we will rely exclusively
-    // on the secure Stripe webhook to create the submission.
-    if (process.env.NODE_ENV === 'development') {
-        console.log('--- DEVELOPMENT MODE: Simulating successful payment webhook ---');
-        try {
-            await createSubmissionFromWebhook({
-                artistName: metadata.artistName,
-                songTitle: metadata.songTitle,
-                contactEmail: metadata.contactEmail,
-                audioUrl: metadata.audioUrl,
-                genre: metadata.genre,
-                reviewerId: metadata.reviewerId,
-                packageId: metadata.packageId,
-            });
-            console.log('--- DEVELOPMENT MODE: Submission successfully created for testing. ---');
-        } catch (error) {
-            console.error('DEVELOPMENT SIMULATION FAILED:', error);
-            // We can choose to stop the process here in dev if the simulation fails.
-            return { error: 'Development simulation failed. Check server logs.' };
-        }
-    }
-    // --- END OF DEVELOPMENT ONLY SIMULATION ---
+    // NOTE: Submissions are created ONLY via Stripe webhook after payment confirmation
+    // This ensures consistent behavior across development and production environments
 
     try {
         const session = await stripe.checkout.sessions.create({
@@ -77,6 +54,19 @@ export async function createCheckoutSession(payload: CheckoutSessionPayload): Pr
             success_url: `${host}/submit-success`,
             cancel_url: `${host}/`, // Redirect to home page on cancellation
             metadata: metadata, // Pass our custom metadata to the session
+        });
+        
+        // Create transaction record
+        await createTransaction({
+            stripeSessionId: session.id,
+            artistName: metadata.artistName,
+            songTitle: metadata.songTitle,
+            contactEmail: metadata.contactEmail,
+            amount: priceInCents,
+            currency: 'usd',
+            status: 'pending',
+            reviewerId: metadata.reviewerId,
+            packageId: metadata.packageId,
         });
         
         return { url: session.url };

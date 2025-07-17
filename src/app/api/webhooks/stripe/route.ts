@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { headers } from 'next/headers';
-import { createSubmissionFromWebhook } from '@/lib/firebase/services';
+import { createSubmissionFromWebhook, getTransactionBySessionId, updateTransactionStatus, getTransactions } from '@/lib/firebase/services';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
@@ -28,6 +28,19 @@ export async function POST(req: Request) {
       
       console.log('Checkout session was successful! Fulfilling order...');
 
+      // Update transaction status
+      try {
+        const transaction = await getTransactionBySessionId(session.id);
+        if (transaction && transaction.id) {
+          await updateTransactionStatus(transaction.id, 'completed', {
+            stripePaymentIntentId: session.payment_intent as string,
+          });
+          console.log(`Transaction ${transaction.id} marked as completed.`);
+        }
+      } catch (error) {
+        console.error('Error updating transaction status:', error);
+      }
+
       // This is where we fulfill the purchase.
       // The metadata contains the submission details we passed earlier.
       const metadata = session.metadata;
@@ -39,7 +52,7 @@ export async function POST(req: Request) {
 
       try {
         // Here we create the actual submission record now that payment is confirmed.
-        await createSubmissionFromWebhook({
+        const submission = await createSubmissionFromWebhook({
           artistName: metadata.artistName,
           songTitle: metadata.songTitle,
           contactEmail: metadata.contactEmail,
@@ -48,13 +61,70 @@ export async function POST(req: Request) {
           reviewerId: metadata.reviewerId,
           packageId: metadata.packageId,
         });
+        
+        // Update transaction with submission ID
+        const transaction = await getTransactionBySessionId(session.id);
+        if (transaction) {
+          await updateTransactionStatus(transaction.id, 'completed', {
+            submissionId: submission.id,
+          });
+        }
+        
         console.log('Submission successfully created from webhook.');
       } catch (error) {
         console.error('Error creating submission from webhook:', error);
+        
+        // Mark transaction as failed
+        const transaction = await getTransactionBySessionId(session.id);
+        if (transaction) {
+          await updateTransactionStatus(transaction.id, 'failed', {
+            failureReason: 'Failed to create submission',
+            stripeError: (error as Error).message,
+          });
+        }
+        
         return new NextResponse('Webhook Error: Could not create submission.', { status: 500 });
       }
 
       break;
+      
+    case 'checkout.session.expired':
+      const expiredSession = event.data.object as Stripe.Checkout.Session;
+      console.log('Checkout session expired:', expiredSession.id);
+      
+      try {
+        const transaction = await getTransactionBySessionId(expiredSession.id);
+        if (transaction) {
+          await updateTransactionStatus(transaction.id, 'cancelled', {
+            failureReason: 'Session expired',
+          });
+        }
+      } catch (error) {
+        console.error('Error updating expired session:', error);
+      }
+      
+      break;
+      
+    case 'payment_intent.payment_failed':
+      const failedPayment = event.data.object as Stripe.PaymentIntent;
+      console.log('Payment failed:', failedPayment.id);
+      
+      try {
+        // Find transaction by payment intent ID
+        const transactions = await getTransactions();
+        const transaction = transactions.find(t => t.stripePaymentIntentId === failedPayment.id);
+        if (transaction) {
+          await updateTransactionStatus(transaction.id, 'failed', {
+            failureReason: 'Payment failed',
+            stripeError: failedPayment.last_payment_error?.message || 'Unknown payment error',
+          });
+        }
+      } catch (error) {
+        console.error('Error updating failed payment:', error);
+      }
+      
+      break;
+      
     default:
       console.log(`Unhandled event type ${event.type}`);
   }

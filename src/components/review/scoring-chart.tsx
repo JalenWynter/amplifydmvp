@@ -46,7 +46,10 @@ const schemaObject = allFactorIds.reduce((acc, id) => {
 
 schemaObject.strengths = z.string().min(50, 'Please provide at least 50 characters on strengths.');
 schemaObject.improvements = z.string().min(50, 'Please provide at least 50 characters on areas for improvement.');
-schemaObject.summary = z.string().min(50, 'Please provide at least 50 characters in your summary.');
+schemaObject.overallReview = z.string().min(100, 'Please provide at least 100 characters for the overall review.');
+schemaObject.audioFeedbackUrl = z.string().optional();
+schemaObject.videoFeedbackUrl = z.string().optional();
+schemaObject.isDraft = z.boolean().optional();
 
 export const reviewSchema = z.object(schemaObject);
 export type ReviewFormValues = z.infer<typeof reviewSchema>;
@@ -124,16 +127,26 @@ export default function ScoringChart({ form, scores }: ScoringChartProps) {
                     </div>
                 )}
             />
+            
             <FormField
                 control={form.control}
-                name="summary"
+                name="overallReview"
                 render={({ field }) => (
-                    <div className="space-y-2">
-                        <Label htmlFor="summary" className="text-lg font-semibold">Overall Summary</Label>
+                     <div className="space-y-2">
+                        <Label htmlFor="overallReview" className="text-lg font-semibold">Overall Review</Label>
                         <FormControl>
-                            <Textarea id="summary" rows={4} placeholder="Provide a final summary of your thoughts. Tie together the strengths and areas for improvement with a concluding piece of advice for the artist." className="mt-2" {...field} />
+                            <Textarea 
+                                id="overallReview" 
+                                rows={6} 
+                                placeholder="Provide a comprehensive overall review of this track. Include your thoughts on the production, performance, commercial potential, and any other relevant aspects. This will be the main review text that appears on the artist's review page."
+                                className="mt-2 min-h-[150px] resize-y"
+                                {...field} 
+                            />
                         </FormControl>
                         <FormMessage />
+                        <div className="text-xs text-muted-foreground">
+                            {field.value?.length || 0} characters (minimum 100 required)
+                        </div>
                     </div>
                 )}
             />

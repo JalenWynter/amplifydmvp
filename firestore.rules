@@ -4,11 +4,122 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // TEMPORARY: Open rules for development seeding
-    // TODO: Remove this before production deployment
-    match /{document=**} {
-      allow read, write: if true;
+    // REVIEWS COLLECTION - PUBLIC READ ACCESS
+    match /reviews/{reviewId} {
+      // Allow public read access to reviews
+      allow read: if true;
+      
+      // Only authenticated reviewers can create reviews
+      allow create: if request.auth != null 
+        && request.auth.uid == resource.data.reviewerId;
+      
+      // Only the reviewer who created it can update
+      allow update: if request.auth != null 
+        && request.auth.uid == resource.data.reviewerId;
+      
+      // No delete access (reviews are permanent)
+      allow delete: if false;
     }
     
+    // REVIEWERS COLLECTION - PUBLIC READ ACCESS
+    match /reviewers/{reviewerId} {
+      // Allow public read access to reviewer profiles
+      allow read: if true;
+      
+      // Only the reviewer can update their own profile
+      allow write: if request.auth != null 
+        && request.auth.uid == reviewerId;
+    }
+    
+    // SUBMISSIONS COLLECTION - RESTRICTED ACCESS
+    match /submissions/{submissionId} {
+      // Only reviewers can read assigned submissions
+      allow read: if request.auth != null 
+        && request.auth.uid == resource.data.reviewerId;
+      
+      // Only system can create submissions (via server-side functions)
+      allow create: if false;
+      
+      // Only assigned reviewer can update status
+      allow update: if request.auth != null 
+        && request.auth.uid == resource.data.reviewerId
+        && request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['status']);
+      
+      allow delete: if false;
+    }
+    
+    // USERS COLLECTION - RESTRICTED ACCESS
+    match /users/{userId} {
+      // Users can only read their own data
+      allow read: if request.auth != null 
+        && request.auth.uid == userId;
+      
+      // Users can only update their own data
+      allow update: if request.auth != null 
+        && request.auth.uid == userId;
+      
+      // No public creation or deletion
+      allow create, delete: if false;
+    }
+    
+    // APPLICATIONS COLLECTION - ADMIN ONLY
+    match /applications/{applicationId} {
+      // Only admins can access applications
+      allow read, write: if request.auth != null 
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin';
+    }
+    
+    // TRANSACTIONS COLLECTION - ADMIN ONLY
+    match /transactions/{transactionId} {
+      // Only admins can access transaction data
+      allow read, write: if request.auth != null 
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin';
+    }
+    
+    // PAYOUTS COLLECTION - ADMIN ONLY
+    match /payouts/{payoutId} {
+      // Only admins can access payout data
+      allow read, write: if request.auth != null 
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin';
+    }
+    
+    // REFERRAL CODES COLLECTION - ADMIN AND REVIEWER ACCESS
+    match /referralCodes/{codeId} {
+      // Admins and Reviewers can access referral codes
+      allow read, write: if request.auth != null 
+        && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin' ||
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Reviewer');
+    }
+
+    // REFERRAL EARNINGS COLLECTION - REFERRER AND ADMIN ACCESS
+    match /referralEarnings/{earningId} {
+      // Referrers can read their own earnings, system can create, admins can access all
+      allow read: if request.auth != null 
+        && (resource.data.referrerId == request.auth.uid ||
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin');
+      
+      // Only system can create referral earnings
+      allow create: if request.auth != null;
+      
+      // Only admins can update earnings (for payout processing)
+      allow update: if request.auth != null 
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin';
+      
+      // No deletion of earnings
+      allow delete: if false;
+    }
+    
+    // SETTINGS COLLECTION - ADMIN ONLY
+    match /settings/{settingsId} {
+      // Only admins can access settings
+      allow read, write: if request.auth != null 
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin';
+    }
+    
+    // DENY ALL OTHER ACCESS
+    match /{document=**} {
+      allow read, write: if false;
+    }
   }
 }

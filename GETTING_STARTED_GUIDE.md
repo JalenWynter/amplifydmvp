@@ -238,3 +238,27 @@ You are now live! Here are some potential next steps and feature enhancements to
     *   **"Sounds Like" Feature**: Use AI to compare a submitted track to well-known artists to help reviewers understand its sonic profile.
 
 Congratulations! You have a solid foundation for a successful platform. Good luck with the launch!
+
+## 🔧 **Manual CORS Fix (Critical - Do This First):**
+
+**Option 1: Using Google Cloud Console (Recommended)**
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Select your project "amplifydmvp"
+3. Navigate to **Storage → Browser**
+4. Click on your bucket `amplifydmvp.firebasestorage.app`
+5. Go to **Permissions** tab
+6. Click **Add** and add these origins:
+   - `http://localhost:9002`
+   - `https://amplifydmvp.web.app`
+7. Set methods: `GET, POST, PUT, DELETE, OPTIONS`
+
+**Option 2: Using Firebase CLI (if the above doesn't work)**
+```bash
+<code_block_to_apply_changes_from>
+```
+
+---
+
+## 📊 **Step 2: Add Transaction Tracking to Your Existing System**
+
+Let me add transaction tracking to your existing financials structure without creating new files:

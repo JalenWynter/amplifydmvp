@@ -2,20 +2,23 @@
 'use client';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, Music, Star, User, Settings, LogOut, Loader2, PanelLeft } from 'lucide-react';
+import { Home, Music, Star, User, Settings, LogOut, Loader2, PanelLeft, Users } from 'lucide-react';
 import Logo from '@/components/logo';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '@/lib/firebase/client';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase/client';
 
 const sidebarNavItems = [
   { href: '/dashboard', label: 'Home', icon: Home },
   { href: '/dashboard/submissions', label: 'Submissions', icon: Music },
   { href: '/dashboard/reviews', label: 'My Reviews', icon: Star },
+  { href: '/dashboard/referrals', label: 'Referrals', icon: Users },
   { href: '/dashboard/profile', label: 'Profile', icon: User },
 ];
 
@@ -53,9 +56,11 @@ const NavContent = ({ user, pathname }: { user: any, pathname: string }) => (
                 </div>
             </div>
              <div className="space-y-2">
-                <Button variant="outline" className="w-full justify-start text-muted-foreground hover:text-primary">
-                    <Settings className="mr-2 h-4 w-4" />
-                    Settings
+                <Button asChild variant="outline" className="w-full justify-start text-muted-foreground hover:text-primary">
+                    <Link href="/dashboard/profile">
+                        <Settings className="mr-2 h-4 w-4" />
+                        Settings
+                    </Link>
                 </Button>
                  <Button variant="outline" className="w-full justify-start text-muted-foreground hover:text-primary" onClick={() => auth.signOut()}>
                     <LogOut className="mr-2 h-4 w-4" />
@@ -75,6 +80,8 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const router = useRouter();
   const [user, loading, error] = useAuthState(auth);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [roleLoading, setRoleLoading] = useState(true);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -82,7 +89,51 @@ export default function DashboardLayout({
     }
   }, [user, loading, router]);
 
-  if (loading) {
+  useEffect(() => {
+    const checkUserRole = async () => {
+      if (!user) {
+        setRoleLoading(false);
+        return;
+      }
+
+      try {
+        const userRef = doc(db, "users", user.uid);
+        const userDoc = await getDoc(userRef);
+        
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setUserRole(userData.role);
+          
+          // Only redirect non-reviewers, don't redirect reviewers
+          if (userData.role !== 'Reviewer') {
+            if (userData.role === 'Admin') {
+              router.push('/admin');
+            } else {
+              router.push('/apply');
+            }
+          }
+        } else {
+          // User doesn't exist in database - for development, assume they're a reviewer if authenticated
+          // In production, you'd want to redirect to apply
+          console.warn(`User ${user.uid} not found in database. Assuming reviewer role for development.`);
+          setUserRole('Reviewer'); // Development fallback
+        }
+      } catch (error) {
+        console.error('Error checking user role:', error);
+        // Fallback: if we can't check the role but user is authenticated, assume reviewer for development
+        console.warn('Failed to check user role. Assuming reviewer role for development.');
+        setUserRole('Reviewer'); // Development fallback
+      } finally {
+        setRoleLoading(false);
+      }
+    };
+
+    if (user && !loading) {
+      checkUserRole();
+    }
+  }, [user, loading, router]);
+
+  if (loading || roleLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -91,12 +142,31 @@ export default function DashboardLayout({
   }
   
   if (error || !user) {
-    // This will be caught by the useEffect, but as a fallback:
     return (
        <div className="flex items-center justify-center min-h-screen">
         <p>Redirecting to login...</p>
       </div>
     )
+  }
+
+  // Show access denied for non-reviewers (but be more permissive in development)
+  if (userRole !== 'Reviewer' && userRole !== null) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
+          <p className="text-muted-foreground mb-4">
+            The reviewer dashboard is only accessible to approved reviewers.
+          </p>
+          <p className="text-sm text-muted-foreground mb-4">
+            Your role: {userRole || 'Not found'}
+          </p>
+          <Button asChild>
+            <Link href="/apply">Apply to Become a Reviewer</Link>
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (

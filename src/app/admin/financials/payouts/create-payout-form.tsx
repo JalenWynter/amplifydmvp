@@ -72,7 +72,7 @@ export default function CreatePayoutForm({ reviewers, onSave, onCancel, isSaving
         reviewer: {
             id: selectedReviewer.id,
             name: selectedReviewer.name,
-            email: 'email@placeholder.com', // In a real app, you'd have the reviewer's email
+            email: `${selectedReviewer.name.toLowerCase().replace(/\s+/g, '.')}@amplifyd.com`, // Generate email from name
             avatarUrl: selectedReviewer.avatarUrl || ''
         },
         amount: `$${totalAmount.toFixed(2)}`,

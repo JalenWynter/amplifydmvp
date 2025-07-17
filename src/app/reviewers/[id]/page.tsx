@@ -96,9 +96,9 @@ export default function ReviewerProfilePage({ params }: { params: Promise<{ id: 
       setSubmittingPackage(pkg.id);
       toast({ title: "Let's Get Your Music", description: "You'll be redirected to the homepage to upload your track and complete your submission." });
       
-      // Redirect to the submission form on the homepage after a short delay
+      // Redirect to the submission form on the homepage with pre-selected reviewer and package
       setTimeout(() => {
-        router.push('/');
+        router.push(`/?reviewerId=${reviewer.id}&packageId=${pkg.id}`);
       }, 3000);
   };
 
@@ -123,7 +123,7 @@ export default function ReviewerProfilePage({ params }: { params: Promise<{ id: 
     <div className="space-y-8">
         <Card className="overflow-hidden">
             <div className="relative h-48 w-full">
-                <Image src={reviewer.avatarUrl || 'https://placehold.co/1200x400.png'} alt={`${reviewer.name} cover image`} layout="fill" objectFit="cover" data-ai-hint="sound waves" />
+                <Image src={reviewer.avatarUrl || 'https://placehold.co/1200x400.png'} alt={`${reviewer.name} cover image`} fill style={{ objectFit: 'cover' }} data-ai-hint="sound waves" />
                 <div className="absolute inset-0 bg-black/40" />
             </div>
             <div className="p-6">
@@ -133,7 +133,7 @@ export default function ReviewerProfilePage({ params }: { params: Promise<{ id: 
                         <AvatarFallback>{reviewer.name.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div className="pt-20 sm:pt-24 flex-grow">
-                        <h1 className="text-3xl font-bold font-headline">{reviewer.name}</h1>
+                        <h1 className="text-3xl font-bold font-headline break-words">{reviewer.name}</h1>
                         <div className="flex flex-wrap items-center gap-4 mt-2 text-muted-foreground">
                             <div className="flex items-center gap-1.5">
                                 <Clock className="w-4 h-4" />

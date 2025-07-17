@@ -40,6 +40,7 @@ const adminNavGroups: NavGroup[] = [
       { href: '/admin', label: 'Dashboard', icon: Home },
       { href: '/admin/users', label: 'Users', icon: Users },
       { href: '/admin/applications', label: 'Applications', icon: CheckSquare },
+      { href: '/admin/submissions', label: 'Submissions', icon: FileCode },
     ],
   },
   {
@@ -49,7 +50,7 @@ const adminNavGroups: NavGroup[] = [
         href: '/admin/financials',
         label: 'Financials',
         icon: DollarSign,
-        subpath: '/payouts'
+        subpath: '/payouts|/transactions'
       },
       {
         href: '/admin/referrals',
@@ -73,7 +74,10 @@ const adminNavGroups: NavGroup[] = [
 const isActive = (pathname: string, href: string, subpath?: string) => {
     if (href === '/admin' && pathname === href) return true;
     if (href !== '/admin' && pathname.startsWith(href)) return true;
-    if (subpath && pathname.startsWith(`${href}${subpath}`)) return true;
+    if (subpath) {
+        const subpaths = subpath.split('|');
+        return subpaths.some(path => pathname.startsWith(`${href}${path}`));
+    }
     return false;
 }
 

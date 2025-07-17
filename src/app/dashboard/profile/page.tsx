@@ -26,6 +26,9 @@ import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import Link from "next/link";
+import { db } from "@/lib/firebase/client";
+import { doc, getDoc } from "firebase/firestore";
 
 const profileSchema = z.object({
     name: z.string().min(3, "Name must be at least 3 characters."),
@@ -53,15 +56,15 @@ const formatLabels: { [key: string]: string } = {
 function PackageCard({ pkg, onEdit, onDelete }: { pkg: ReviewPackage; onEdit: (pkg: ReviewPackage) => void; onDelete: (pkgId: string) => void; }) {
     return (
         <Card>
-            <CardHeader className="flex flex-row justify-between items-start">
-                <div>
-                    <CardTitle className="text-xl">{pkg.name}</CardTitle>
-                    <CardDescription>{pkg.trackCount} track(s)</CardDescription>
+            <CardHeader className="flex flex-row justify-between items-start gap-4">
+                <div className="min-w-0 flex-1">
+                    <CardTitle className="text-xl truncate" title={pkg.name}>{pkg.name}</CardTitle>
+                    <CardDescription className="truncate">{pkg.trackCount} track(s)</CardDescription>
                 </div>
-                <div className="text-2xl font-bold text-primary">${(pkg.priceInCents / 100).toFixed(2)}</div>
+                <div className="text-2xl font-bold text-primary flex-shrink-0">${(pkg.priceInCents / 100).toFixed(2)}</div>
             </CardHeader>
             <CardContent className="space-y-4">
-                <p className="text-muted-foreground text-sm h-10">{pkg.description}</p>
+                <p className="text-muted-foreground text-sm h-10 line-clamp-2 overflow-hidden" title={pkg.description}>{pkg.description}</p>
                 <div className="flex flex-wrap gap-x-4 gap-y-2">
                     {pkg.formats.map(format => {
                         const Icon = formatIcons[format];
@@ -104,9 +107,13 @@ function PackageCard({ pkg, onEdit, onDelete }: { pkg: ReviewPackage; onEdit: (p
     )
 }
 
-function ProfileForm({ reviewer, onProfileUpdate }: { reviewer: Reviewer, onProfileUpdate: () => void }) {
+function ProfileForm({ reviewer, onProfileUpdate }: { reviewer: Reviewer | null, onProfileUpdate: () => void }) {
     const [isSaving, setIsSaving] = useState(false);
     const { toast } = useToast();
+
+    if (!reviewer) {
+        return <div>Loading profile...</div>;
+    }
 
     const form = useForm<ProfileFormValues>({
         resolver: zodResolver(profileSchema),
@@ -175,6 +182,7 @@ function ProfileForm({ reviewer, onProfileUpdate }: { reviewer: Reviewer, onProf
 
 export default function ProfilePage() {
     const [reviewer, setReviewer] = useState<Reviewer | null>(null);
+    const [userInfo, setUserInfo] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [editingPackage, setEditingPackage] = useState<Partial<ReviewPackage> | null>(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -183,9 +191,36 @@ export default function ProfilePage() {
     const loadProfile = useCallback(async () => {
         if (!auth.currentUser) return;
         setIsLoading(true);
-        const profile = await getReviewerById(auth.currentUser.uid);
-        setReviewer(profile);
-        setIsLoading(false);
+        
+        try {
+            // First check if user exists in users collection
+            const userRef = doc(db, "users", auth.currentUser.uid);
+            const userDoc = await getDoc(userRef);
+            
+            if (userDoc.exists()) {
+                const userData = userDoc.data();
+                setUserInfo(userData);
+                
+                // Only try to load reviewer profile if user is a reviewer
+                if (userData.role === 'Reviewer') {
+                    const profile = await getReviewerById(auth.currentUser.uid);
+                    setReviewer(profile);
+                } else {
+                    // User exists but is not a reviewer
+                    setReviewer(null);
+                }
+            } else {
+                // User doesn't exist in users collection
+                setUserInfo(null);
+                setReviewer(null);
+            }
+        } catch (error) {
+            console.error("Error loading profile:", error);
+            setUserInfo(null);
+            setReviewer(null);
+        } finally {
+            setIsLoading(false);
+        }
     }, []);
 
     useEffect(() => {
@@ -254,8 +289,86 @@ export default function ProfilePage() {
         return <div className="flex items-center justify-center p-20"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
     }
 
+    // Handle case where user is not authenticated
+    if (!auth.currentUser) {
+        return (
+            <div className="text-center py-20">
+                <h1 className="text-2xl font-bold">Authentication Required</h1>
+                <p className="text-muted-foreground">Please log in to access your profile.</p>
+                <Button asChild className="mt-4">
+                    <Link href="/login">Log In</Link>
+                </Button>
+            </div>
+        );
+    }
+
+    // Handle case where user exists but is not a reviewer
+    if (userInfo && userInfo.role !== 'Reviewer') {
+        return (
+            <div className="text-center py-20">
+                <h1 className="text-2xl font-bold">Access Denied</h1>
+                <p className="text-muted-foreground">
+                    This area is only accessible to reviewers. Your account role is: {userInfo.role}
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                    User ID: {auth.currentUser.uid}
+                </p>
+                <Button asChild className="mt-4">
+                    <Link href="/apply">Apply to Become a Reviewer</Link>
+                </Button>
+            </div>
+        );
+    }
+
+    // Handle case where user doesn't exist in users collection
+    if (!userInfo) {
+        return (
+            <div className="text-center py-20">
+                <h1 className="text-2xl font-bold">User Profile Not Found</h1>
+                <p className="text-muted-foreground">
+                    Your user profile was not found in the database. Please contact support.
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                    User ID: {auth.currentUser.uid}
+                </p>
+                <Button asChild className="mt-4">
+                    <Link href="/apply">Apply to Become a Reviewer</Link>
+                </Button>
+            </div>
+        );
+    }
+
+    // Handle case where user is a reviewer but no reviewer document exists
+    if (userInfo.role === 'Reviewer' && !reviewer) {
+        return (
+            <div className="text-center py-20">
+                <h1 className="text-2xl font-bold">Reviewer Profile Not Found</h1>
+                <p className="text-muted-foreground">
+                    Your reviewer profile was not found. This might be because your application is still being processed.
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                    User ID: {auth.currentUser.uid}
+                </p>
+                <Button asChild className="mt-4">
+                    <Link href="/dev-setup">Run Database Setup</Link>
+                </Button>
+            </div>
+        );
+    }
+
+    // At this point, reviewer should be non-null, but let's be safe
     if (!reviewer) {
-        return <div>Could not load profile. You may need to log in.</div>
+        return (
+            <div className="text-center py-20">
+                <h1 className="text-2xl font-bold">Unexpected Error</h1>
+                <p className="text-muted-foreground">
+                    Something went wrong loading your profile. Please try again.
+                </p>
+                <Button onClick={loadProfile} className="mt-4">
+                    Retry
+                </Button>
+            </div>
+        );
     }
 
     return (

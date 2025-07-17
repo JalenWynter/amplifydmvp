@@ -5,21 +5,27 @@ import { Button } from '@/components/ui/button';
 import Logo from '@/components/logo';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth } from '@/lib/firebase/client';
+import { LogOut } from 'lucide-react';
 
 const navLinks = [
   { href: '/features', label: 'Reviewers' },
+  { href: '/reviews', label: 'Reviews' },
 ];
-
-// In a real app, you'd get this from an auth context
-const useAuth = () => ({
-  user: null, // or { role: 'reviewer' }
-  loading: false,
-});
 
 
 export default function Header() {
   const pathname = usePathname();
-  const { user, loading } = useAuth();
+  const [user, loading] = useAuthState(auth);
+
+  const handleLogout = async () => {
+    try {
+      await auth.signOut();
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
 
   return (
     <header className="bg-card/80 backdrop-blur-lg border-b sticky top-0 z-50">
@@ -53,7 +59,10 @@ export default function Header() {
                   <Button asChild variant="ghost">
                     <Link href="/dashboard">Dashboard</Link>
                   </Button>
-                  <Button>Log Out</Button>
+                  <Button onClick={handleLogout} variant="outline">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Log Out
+                  </Button>
                 </>
               ) : (
                 <>

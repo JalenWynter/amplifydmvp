@@ -8,8 +8,10 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { FileAudio, Music, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
-import { getSubmissions, Submission } from "@/lib/firebase/services";
+import { getSubmissions, Submission, hasReviewerSubmittedReview } from "@/lib/firebase/services";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuthState } from "react-firebase-hooks/auth";
+import { auth } from "@/lib/firebase/client";
 
 function SubmissionRowSkeleton() {
     return (
@@ -38,18 +40,30 @@ function EmptyState() {
 }
 
 export default function SubmissionsPage() {
+    const [user, loadingAuth] = useAuthState(auth);
     const [submissions, setSubmissions] = useState<Submission[]>([]);
+    const [submissionReviewStatus, setSubmissionReviewStatus] = useState<Record<string, boolean>>({});
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
+        if (loadingAuth || !user) return;
+        
         const fetchSubmissions = async () => {
             setIsLoading(true);
-            const fetchedSubmissions = await getSubmissions();
+            const fetchedSubmissions = await getSubmissions({ reviewerId: user.uid });
             setSubmissions(fetchedSubmissions);
+            
+            // Check review status for each submission
+            const reviewStatusMap: Record<string, boolean> = {};
+            for (const submission of fetchedSubmissions) {
+                reviewStatusMap[submission.id] = await hasReviewerSubmittedReview(submission.id, user.uid);
+            }
+            setSubmissionReviewStatus(reviewStatusMap);
+            
             setIsLoading(false);
         }
         fetchSubmissions();
-    }, []);
+    }, [user, loadingAuth]);
 
     return (
         <Card>
@@ -69,28 +83,37 @@ export default function SubmissionsPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {isLoading ? (
+                        {isLoading || loadingAuth ? (
                             Array.from({length: 5}).map((_, i) => <SubmissionRowSkeleton key={i} />)
                         ) : submissions.length > 0 ? (
-                            submissions.map((sub) => (
-                                <TableRow key={sub.id}>
-                                    <TableCell className="font-medium">{sub.artistName}</TableCell>
-                                    <TableCell>{sub.songTitle}</TableCell>
-                                    <TableCell>{sub.genre}</TableCell>
-                                    <TableCell>
-                                        <Badge variant={'secondary'} className={getStatusBadgeVariant(sub.status)}>
-                                            {sub.status}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <Button asChild size="sm" variant="outline">
-                                            <Link href={`/dashboard/review/${sub.id}`}>
-                                                {sub.status === 'Pending Review' ? 'Start Review' : 'View Review'}
-                                            </Link>
-                                        </Button>
-                                    </TableCell>
-                                </TableRow>
-                            ))
+                            submissions.map((sub) => {
+                                const hasReviewBeenSubmitted = submissionReviewStatus[sub.id];
+                                return (
+                                    <TableRow key={sub.id}>
+                                        <TableCell className="font-medium max-w-[200px] truncate" title={sub.artistName}>{sub.artistName}</TableCell>
+                                        <TableCell className="max-w-[250px] truncate" title={sub.songTitle}>{sub.songTitle}</TableCell>
+                                        <TableCell className="max-w-[150px] truncate" title={sub.genre}>{sub.genre}</TableCell>
+                                        <TableCell>
+                                            <Badge variant={'secondary'} className={hasReviewBeenSubmitted ? "bg-green-100 text-green-800 hover:bg-green-200" : getStatusBadgeVariant(sub.status)}>
+                                                {hasReviewBeenSubmitted ? "Reviewed" : sub.status}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            {hasReviewBeenSubmitted ? (
+                                                <Badge variant="outline" className="text-gray-500">
+                                                    Completed
+                                                </Badge>
+                                            ) : (
+                                                <Button asChild size="sm" variant="outline">
+                                                    <Link href={`/dashboard/review/${sub.id}`}>
+                                                        Start Review
+                                                    </Link>
+                                                </Button>
+                                            )}
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })
                         ) : (
                            <EmptyState />
                         )}

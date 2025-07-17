@@ -181,15 +181,15 @@ export default function ViewUsersPage() {
                         ) : users.length > 0 ? (
                             users.map((user) => (
                                 <TableRow key={user.id}>
-                                    <TableCell>
+                                    <TableCell className="max-w-[300px]">
                                         <div className="flex items-center gap-3">
-                                            <Avatar>
+                                            <Avatar className="flex-shrink-0">
                                                 <AvatarImage src={user.avatarUrl} alt={user.name} />
                                                 <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
                                             </Avatar>
-                                            <div>
-                                                <div className="font-medium">{user.name}</div>
-                                                <div className="text-sm text-muted-foreground">{user.email}</div>
+                                            <div className="min-w-0 flex-1">
+                                                <div className="font-medium truncate" title={user.name}>{user.name}</div>
+                                                <div className="text-sm text-muted-foreground truncate" title={user.email}>{user.email}</div>
                                             </div>
                                         </div>
                                     </TableCell>

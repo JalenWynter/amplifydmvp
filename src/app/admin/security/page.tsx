@@ -10,7 +10,7 @@ export default function SecurityPage() {
                     <CardTitle>Firebase Security Rules</CardTitle>
                 </div>
                 <CardDescription>
-                    This is a placeholder for a UI to view and manage your Firestore and Storage security rules.
+                    Security rules management interface for Firestore and Storage access control.
                 </CardDescription>
             </CardHeader>
             <CardContent>

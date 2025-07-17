@@ -20,14 +20,14 @@ export default function ReviewerCard({ reviewer }: { reviewer: Reviewer }) {
         </Avatar>
 
         <div className="flex justify-center items-center gap-2 mb-2">
-            <h3 className="text-2xl font-bold">{reviewer.name}</h3>
-            <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200">
+            <h3 className="text-2xl font-bold text-center truncate max-w-[200px]" title={reviewer.name}>{reviewer.name}</h3>
+            <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200 flex-shrink-0">
                 <CheckCircle className="w-3 h-3 mr-1" />
                 Verified
             </Badge>
         </div>
 
-        <p className="text-sm text-muted-foreground mb-4 h-12 line-clamp-3">{reviewer.experience}</p>
+        <p className="text-sm text-muted-foreground mb-4 h-12 line-clamp-3 overflow-hidden" title={reviewer.experience}>{reviewer.experience}</p>
 
         <div className="flex flex-wrap gap-2 justify-center mb-4">
           {reviewer.genres.slice(0, 3).map(genre => (

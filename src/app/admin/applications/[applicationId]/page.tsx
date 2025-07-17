@@ -132,14 +132,14 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ ap
             <h3 className="font-semibold text-lg">Applicant Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div className="flex items-center gap-2">
-                <User className="w-4 h-4 text-muted-foreground" />
+                <User className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                 <strong>Name:</strong>
-                <span>{application.name}</span>
+                <span className="break-words" title={application.name}>{application.name}</span>
               </div>
               <div className="flex items-center gap-2">
-                <Mail className="w-4 h-4 text-muted-foreground" />
+                <Mail className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                 <strong>Email:</strong>
-                <a href={`mailto:${application.email}`} className="text-primary hover:underline">{application.email}</a>
+                <a href={`mailto:${application.email}`} className="text-primary hover:underline break-all" title={application.email}>{application.email}</a>
               </div>
               <div className="flex items-center gap-2">
                 <ExternalLink className="w-4 h-4 text-muted-foreground" />
@@ -159,14 +159,14 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ ap
 
           <div className="space-y-2">
             <h3 className="font-semibold text-lg">Music Background & Experience</h3>
-            <p className="text-muted-foreground whitespace-pre-wrap">{application.musicBackground}</p>
+            <p className="text-muted-foreground whitespace-pre-wrap break-words max-w-full overflow-hidden">{application.musicBackground}</p>
           </div>
           
           <Separator />
           
            <div className="space-y-2">
             <h3 className="font-semibold text-lg">Motivation</h3>
-            <p className="text-muted-foreground whitespace-pre-wrap">{application.joinReason}</p>
+            <p className="text-muted-foreground whitespace-pre-wrap break-words max-w-full overflow-hidden">{application.joinReason}</p>
           </div>
 
         </CardContent>
