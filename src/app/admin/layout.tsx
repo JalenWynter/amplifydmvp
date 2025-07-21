@@ -1,5 +1,10 @@
 
 'use client';
+import { useEffect, useState } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase/client'; // Import auth and db
 import {
   Home,
   Users,
@@ -16,7 +21,6 @@ import {
 import Logo from '@/components/logo';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
@@ -136,6 +140,42 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
     const pathname = usePathname();
+    const router = useRouter();
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+            if (!user) {
+                // No user is signed in, redirect to login
+                router.push('/login');
+                return;
+            }
+
+            // User is signed in, check their role
+            const userDocRef = doc(db, 'users', user.uid);
+            const userDocSnap = await getDoc(userDocRef);
+
+            if (userDocSnap.exists()) {
+                const userData = userDocSnap.data();
+                if (userData?.role === 'Admin') {
+                    setLoading(false); // User is an admin, allow access
+                } else {
+                    // User is not an admin, redirect to dashboard or unauthorized page
+                    router.push('/dashboard'); // Or a specific unauthorized page
+                }
+            } else {
+                // User document not found, redirect (shouldn't happen if user creation is robust)
+                router.push('/login');
+            }
+        });
+
+        return () => unsubscribe(); // Cleanup subscription
+    }, [router]);
+
+    if (loading) {
+        // You can render a loading spinner or a blank page here
+        return <div className="flex items-center justify-center min-h-screen">Loading admin panel...</div>;
+    }
 
   return (
     <div className="grid min-h-screen w-full lg:grid-cols-[280px_1fr]">

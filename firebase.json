@@ -2,34 +2,16 @@
   "firestore": {
     "database": "(default)",
     "location": "nam5",
-    "rules": "firestore.rules",
+    "rules": "firestore.rules.production",
     "indexes": "firestore.indexes.json"
   },
   "storage": {
     "rules": "storage.rules"
   },
-  "functions": [
-    {
-      "source": "src/functions",
-      "runtime": "nodejs18",
-      "codebase": "default"
-    },
-    {
-      "source": "amplifydmvp",
-      "codebase": "amplifydmvp",
-      "ignore": [
-        "node_modules",
-        ".git",
-        "firebase-debug.log",
-        "firebase-debug.*.log",
-        "*.local"
-      ],
-      "predeploy": [
-        "npm --prefix \"$RESOURCE_DIR\" run lint",
-        "npm --prefix \"$RESOURCE_DIR\" run build"
-      ]
-    }
-  ],
+  "functions": {
+    "source": "src/functions",
+    "runtime": "nodejs18"
+  },
   "hosting": {
     "source": ".",
     "ignore": [
@@ -39,6 +21,24 @@
     ],
     "frameworksBackend": {
       "region": "us-central1"
+    }
+  },
+  "emulators": {
+    "auth": {
+      "port": 9099
+    },
+    "firestore": {
+      "port": 8080,
+      "storage": ".firebase/firestore"
+    },
+    "functions": {
+      "port": 5001
+    },
+    "hosting": {
+      "port": 5000
+    },
+    "ui": {
+      "enabled": true
     }
   }
 }

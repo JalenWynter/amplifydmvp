@@ -16,7 +16,7 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-export default function RevenueChart({ data }: { data: any[] }) {
+export default function RevenueChart({ data }: { data: { month: string; revenue: number }[] }) {
   return (
     <ChartContainer config={chartConfig} className="min-h-[200px] w-full h-96">
       <BarChart accessibilityLayer data={data}>

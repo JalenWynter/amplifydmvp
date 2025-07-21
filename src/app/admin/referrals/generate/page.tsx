@@ -87,7 +87,7 @@ export default function GenerateReferralCodePage() {
                             name="associatedUser"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Associated Referrer's Email or Phone</FormLabel>
+                                    <FormLabel>Associated Referrer&apos;s Email or Phone</FormLabel>
                                     <FormControl>
                                         <Input placeholder="Enter a valid email or phone number" {...field} />
                                     </FormControl>

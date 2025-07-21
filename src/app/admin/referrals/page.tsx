@@ -12,6 +12,7 @@ import { PlusCircle, Key, Loader2, Search, Users, TrendingUp, Eye, Copy } from "
 import { useState, useEffect } from "react";
 import { formatDistanceToNow } from 'date-fns';
 import { getAllReferralCodes, ReferralCode, getReferralTrackingChain, getUsers, User, getReferralEarnings, ReferralEarning } from "@/lib/firebase/services";
+import { UserTrackingData } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -42,7 +43,7 @@ function EmptyState({ message = "No data available" }: { message?: string }) {
 }
 
 function UserTrackingDialog({ userId, userName }: { userId: string, userName: string }) {
-    const [trackingData, setTrackingData] = useState<any>(null);
+    const [trackingData, setTrackingData] = useState<UserTrackingData | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const { toast } = useToast();
 
@@ -230,10 +231,10 @@ export default function AdminReferralTrackingPage() {
                 setAllCodes(codes);
                 setAllUsers(users);
                 setAllEarnings(earnings);
-            } catch (error) {
+            } catch (error: unknown) {
                 toast({
                     title: "Error",
-                    description: "Failed to load referral data",
+                    description: error instanceof Error ? error.message : "Failed to load referral data",
                     variant: "destructive"
                 });
             } finally {

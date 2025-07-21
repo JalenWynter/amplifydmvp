@@ -22,7 +22,7 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-export default function UserGrowthChart({ data }: { data: any[] }) {
+export default function UserGrowthChart({ data }: { data: { month: string; users: number; reviewers: number }[] }) {
   return (
     <ChartContainer config={chartConfig} className="min-h-[200px] w-full h-80">
       <BarChart data={data} accessibilityLayer>

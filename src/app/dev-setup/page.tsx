@@ -14,7 +14,7 @@ export default function DevSetupPage() {
   const [isSeeding, setIsSeeding] = useState(false);
   const [isUpdatingUIDs, setIsUpdatingUIDs] = useState(false);
   const [user, loading] = useAuthState(auth);
-  const [userInfo, setUserInfo] = useState<any>(null);
+  const [userInfo, setUserInfo] = useState<User | null>(null);
   const { toast } = useToast();
 
   const handleSeedDatabase = async () => {

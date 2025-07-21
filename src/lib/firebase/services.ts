@@ -1,9 +1,11 @@
 
 // This file will contain all the functions to interact with Firebase services (Firestore, Storage, etc.)
 import { collection, getDocs, doc, getDoc, setDoc, addDoc, updateDoc, query, orderBy, where, arrayUnion, arrayRemove, writeBatch, limit, deleteDoc, getCountFromServer } from "firebase/firestore";
+
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { db, auth, storage } from "./client";
+import { logActivityEvent } from "./activity";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { ReviewFormValues } from "@/components/review/scoring-chart";
 import { 
@@ -113,14 +115,16 @@ export async function getReviewers(): Promise<Reviewer[]> {
 
 
 export async function getReviewerById(id: string): Promise<Reviewer | null> {
-    console.log(`Fetching reviewer ${id} from Firestore...`);
+    console.log(`[getReviewerById] Attempting to fetch reviewer with ID: ${id}`);
     const docRef = doc(db, "reviewers", id);
     const docSnap = await getDoc(docRef);
 
     if (docSnap.exists()) {
-        return { id: docSnap.id, ...docSnap.data() } as Reviewer;
+        const reviewerData = { id: docSnap.id, ...docSnap.data() } as Reviewer;
+        console.log(`[getReviewerById] Reviewer found:`, reviewerData);
+        return reviewerData;
     } else {
-        console.log("No such document!");
+        console.log(`[getReviewerById] No reviewer document found for ID: ${id}`);
         return null;
     }
 }
@@ -239,6 +243,18 @@ export async function approveApplication(applicationId: string): Promise<void> {
 
         console.log("✅ Application approved successfully.", result.data);
 
+        // Log activity event
+        await logActivityEvent({
+            type: 'application_approved',
+            userId: context.auth?.uid, // Assuming context.auth is available in the callable function
+            userEmail: appData.email,
+            details: {
+                applicationId: applicationId,
+                applicantEmail: appData.email,
+                reviewerId: context.auth?.uid,
+            },
+        });
+
         // Invalidate the local reviewer cache to reflect the new data.
         invalidateReviewerCache();
 
@@ -267,7 +283,7 @@ export async function getPayoutById(id: string): Promise<Payout | null> {
   return null;
 }
 
-export async function createPayout(payoutData: Omit<Payout, 'id' | 'date' | 'status'>): Promise<Payout> {
+export async function createPayout(payoutData: Omit<Payout, 'id' | 'date' | 'status' | 'amount'> & { amountInCents: number }): Promise<Payout> {
     console.log("Creating new manual payout...");
     const newPayout: Omit<Payout, 'id'> = {
         ...payoutData,
@@ -279,6 +295,8 @@ export async function createPayout(payoutData: Omit<Payout, 'id' | 'date' | 'sta
     
     return { ...newPayout, id: docRef.id };
 }
+
+
 
 export async function updatePayoutStatus(payoutId: string, status: Payout['status']): Promise<void> {
     console.log(`Updating payout ${payoutId} status to ${status}`);
@@ -568,49 +586,14 @@ export async function getDashboardStats(): Promise<DashboardStats> {
         getCollectionCount("users"),
         getCollectionCount("reviewers"),
         getCollectionCount("submissions"),
-        getCountFromServer(query(collection(db, "reviews")))
-            .then(s => s.data().count)
+        httpsCallable(getFunctions(), 'countDocuments')({ collectionName: "reviews" })
+            .then(res => (res.data as { count: number }).count)
             .catch(() => 0),
     ]);
     return { totalUsers, totalReviewers, totalSubmissions, completedReviews };
 }
 
-export async function getFinancialStats(): Promise<FinancialStats> {
-    console.log("Fetching financial stats...");
 
-    // 1. Get all submissions to calculate total revenue
-    const submissionsSnapshot = await getDocs(collection(db, "submissions"));
-    const reviewers = await getReviewers(); // Use cached or fetched reviewers
-    
-    let totalRevenue = 0;
-    submissionsSnapshot.forEach(subDoc => {
-        const submission = subDoc.data() as Submission;
-        const reviewer = reviewers.find(r => r.id === submission.reviewerId);
-        const pkg = reviewer?.packages.find(p => p.id === submission.packageId);
-        if (pkg) {
-            totalRevenue += pkg.priceInCents / 100;
-        }
-    });
-
-    // 2. Get all payouts to calculate pending total
-    const payoutsSnapshot = await getDocs(query(collection(db, "payouts"), where("status", "==", "Pending")));
-    let pendingPayouts = 0;
-    payoutsSnapshot.forEach(payoutDoc => {
-        const amountString = (payoutDoc.data() as Payout).amount.replace('$', '');
-        pendingPayouts += parseFloat(amountString);
-    });
-
-    // 3. Get total users for average calculation
-    const totalUsers = await getCollectionCount("users");
-
-    return {
-        totalRevenue,
-        avgRevenuePerUser: totalUsers > 0 ? totalRevenue / totalUsers : 0,
-        pendingPayouts,
-        pendingPayoutsCount: payoutsSnapshot.size,
-        totalUsers
-    };
-}
 
 
 // ==================
@@ -1081,22 +1064,78 @@ export async function updateDatabaseWithRealUIDs(userMappings?: { [key: string]:
   console.log("User mappings:", userMappings || "No mappings provided");
 }
 
+export async function ensureUserProfileExists(user: any): Promise<void> {
+  console.log(`Ensuring user profile exists for ${user.uid}...`);
+  const userRef = doc(db, "users", user.uid);
+  const userDoc = await getDoc(userRef);
+
+  if (!userDoc.exists()) {
+    console.log(`Creating new user document for ${user.uid}`);
+    const newUser: User = {
+      id: user.uid,
+      email: user.email || '',
+      name: user.displayName || 'New User',
+      role: USER_ROLE.REVIEWER, // All signed-in users are reviewers
+      status: USER_STATUS.ACTIVE,
+      joinedAt: new Date().toISOString(),
+      avatarUrl: user.photoURL || '',
+    };
+    await setDoc(userRef, newUser);
+    console.log(`[ensureUserProfileExists] User document for ${user.uid} created successfully.`);
+
+    // Also ensure a reviewer profile exists for this new user
+    const reviewerRef = doc(db, "reviewers", user.uid);
+    const reviewerDoc = await getDoc(reviewerRef);
+    if (!reviewerDoc.exists()) {
+      console.log(`[ensureUserProfileExists] Creating new reviewer document for ${user.uid}`);
+      const newReviewer: Reviewer = {
+        id: user.uid,
+        name: user.displayName || 'New Reviewer',
+        avatarUrl: user.photoURL || '',
+        turnaround: "N/A",
+        experience: "No experience provided yet.",
+        genres: [],
+        packages: [],
+        dataAiHint: "",
+      };
+      await setDoc(reviewerRef, newReviewer);
+      console.log(`[ensureUserProfileExists] Reviewer document for ${user.uid} created successfully.`);
+    }
+  } else {
+    console.log(`User document for ${user.uid} already exists.`);
+  }
+}
+
 export async function getCurrentUserInfo(): Promise<User | null> {
-  console.log("Getting current user info...");
+  console.log("[getCurrentUserInfo] Getting current user info...");
   
   if (!auth.currentUser) {
+    console.log("[getCurrentUserInfo] No authenticated user.");
     return null;
   }
   
+  console.log(`[getCurrentUserInfo] Authenticated user UID: ${auth.currentUser.uid}`);
   const userRef = doc(db, "users", auth.currentUser.uid);
   const userDoc = await getDoc(userRef);
   
   if (!userDoc.exists()) {
+    console.log(`[getCurrentUserInfo] No user document found for UID: ${auth.currentUser.uid}`);
     return null;
   }
   
-  return {
-    id: userDoc.id,
-    ...userDoc.data()
-  } as User;
+  const userData = { id: userDoc.id, ...userDoc.data() } as User;
+  console.log("[getCurrentUserInfo] User document found:", userData);
+  return userData;
+}
+
+export async function getRecentActivityEvents(limitCount: number = 10): Promise<ActivityEvent[]> {
+  console.log(`Fetching ${limitCount} recent activity events...`);
+  const eventsCol = collection(db, "activityEvents");
+  const q = query(eventsCol, orderBy("timestamp", "desc"), limit(limitCount));
+  const querySnapshot = await getDocs(q);
+  
+  return querySnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  } as ActivityEvent));
 }

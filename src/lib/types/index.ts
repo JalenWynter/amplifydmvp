@@ -88,7 +88,7 @@ export interface Application {
   joinReason: string;
   referral: string;
   submittedAt: string;
-  userId: string;
+  userId: string | null;
 }
 
 // Payout Review
@@ -109,7 +109,7 @@ export interface Payout {
     email: string;
     avatarUrl: string;
   };
-  amount: string;
+  amountInCents: number;
   status: PayoutStatus;
   date: string; // Request date
   paidDate?: string; // Paid date
@@ -158,7 +158,7 @@ export interface ReferralCode {
   associatedUser: string;
   status: ReferralCodeStatus;
   createdAt: string; // ISO String
-  referrerId?: string; // User ID of the referrer
+  referrerId?: string; // User ID who referred this user
   usedBy?: string; // User ID who used this code
   usedByEmail?: string; // Email of the user who used this code
   usedAt?: string; // ISO String when code was used
@@ -216,4 +216,24 @@ export interface ReviewerEarnings {
   averageEarningPerReview: number;
   referralEarnings: number;
   totalEarningsWithReferrals: number;
-} 
+}
+
+// Activity Event
+export interface ActivityEvent {
+  id?: string; // Firestore document ID
+  timestamp: string; // ISO String
+  type: string; // e.g., 'application_approved', 'review_submitted', 'user_created'
+  userId?: string; // User ID who performed the action (if applicable)
+  userEmail?: string; // User email who performed the action (if applicable)
+  details: { [key: string]: unknown }; // Event-specific data
+}
+
+// User Tracking Data for Referral System
+export interface UserTrackingData {
+  userInfo: User | null;
+  referrer: User | null;
+  referralCode?: ReferralCode | null;
+  generatedCodes: ReferralCode[];
+  referredUsers: User[];
+  earningsReceived: ReferralEarning[];
+}

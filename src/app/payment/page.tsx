@@ -15,7 +15,7 @@ export default function PaymentPage() {
   const [isLoading, setIsLoading] = useState(false);
   
   // In a real app, this data would be passed via state or query params
-  // For the demo, we'll keep it static, but the checkout session will handle real data.
+  // For the demo, we&apos;ll keep it static, but the checkout session will handle real data.
   const submissionDetails = {
     artistName: "Cosmic Dreamer",
     songTitle: "Starlight Echoes",

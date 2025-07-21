@@ -21,7 +21,7 @@ export default function SubmitSuccessPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-muted-foreground">
-              Thank you for trusting Amplifyd. You'll receive an email at the address you provided once your review is complete. This typically takes 3-5 business days.
+              Thank you for trusting Amplifyd. You&apos;ll receive an email at the address you provided once your review is complete. This typically takes 3-5 business days.
             </p>
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-sm text-blue-800">

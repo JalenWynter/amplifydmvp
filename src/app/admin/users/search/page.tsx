@@ -5,11 +5,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Search as SearchIcon, X } from "lucide-react";
 import { useState } from "react";
+import { User } from "@/lib/firebase/services";
 
 
 export default function SearchUsersPage() {
     const [searchTerm, setSearchTerm] = useState('');
-    const [results, setResults] = useState<any[]>([]);
+    const [results, setResults] = useState<User[]>([]);
     const [searched, setSearched] = useState(false);
 
     const handleSearch = (e: React.FormEvent) => {
@@ -56,7 +57,7 @@ export default function SearchUsersPage() {
 
                 {searched && (
                     <div>
-                        <h3 className="text-lg font-semibold mb-4">Search Results for "{searchTerm}"</h3>
+                        <h3 className="text-lg font-semibold mb-4">Search Results for &quot;{searchTerm}&quot;</h3>
                         {results.length > 0 ? (
                             <p>Display results table here</p>
                         ) : (

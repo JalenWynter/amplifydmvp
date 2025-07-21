@@ -62,9 +62,7 @@ function processPayoutsForChart(payouts: Payout[]) {
         const payoutDate = new Date(payout.date);
         const monthKey = format(payoutDate, 'yyyy-MM');
         if (monthlyData[monthKey]) {
-            const amount = parseFloat(payout.amount.replace('$', ''));
-            // This is a proxy for revenue. In a real app, this would come from submissions.
-            monthlyData[monthKey].revenue += amount;
+            monthlyData[monthKey].revenue += payout.amountInCents / 100;
         }
     });
 
@@ -73,8 +71,8 @@ function processPayoutsForChart(payouts: Payout[]) {
 
 export default function FinancialsPage() {
     const [stats, setStats] = useState<FinancialStats | null>(null);
-    const [transactionStats, setTransactionStats] = useState<any>(null);
-    const [revenueData, setRevenueData] = useState<any[]>([]);
+    const [transactionStats, setTransactionStats] = useState<{ successfulTransactions: number; totalTransactions: number; conversionRate: number; failedTransactions: number } | null>(null);
+    const [revenueData, setRevenueData] = useState<{ month: string; revenue: number }[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {

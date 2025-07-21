@@ -72,7 +72,7 @@ export default function ScoringChart({ form, scores }: ScoringChartProps) {
                         {factors.map(factor => (
                             <FormField
                                 key={factor.id}
-                                name={factor.id as any}
+                                name={factor.id as keyof ReviewFormValues}
                                 control={form.control}
                                 render={({ field }) => (
                                      <div className="grid gap-3">

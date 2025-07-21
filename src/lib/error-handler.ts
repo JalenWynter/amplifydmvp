@@ -12,7 +12,7 @@ interface HandledError {
  * @param error - The error object or message.
  * @param context - Additional context about where the error occurred.
  */
-export function logError(error: any, context?: Record<string, any>): void {
+export function logError(error: unknown, context?: Record<string, unknown>): void {
   console.error("Amplifyd Error:", {
     error,
     context,

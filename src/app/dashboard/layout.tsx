@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
+import { ensureUserProfileExists } from '@/lib/firebase/services';
 
 const sidebarNavItems = [
   { href: '/dashboard', label: 'Home', icon: Home },
@@ -22,7 +23,7 @@ const sidebarNavItems = [
   { href: '/dashboard/profile', label: 'Profile', icon: User },
 ];
 
-const NavContent = ({ user, pathname }: { user: any, pathname: string }) => (
+const NavContent = ({ user, pathname }: { user: User, pathname: string }) => (
     <>
       <div className="flex h-16 items-center border-b px-6 lg:h-20">
           <Logo />
@@ -84,54 +85,17 @@ export default function DashboardLayout({
   const [roleLoading, setRoleLoading] = useState(true);
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login');
-    }
-  }, [user, loading, router]);
-
-  useEffect(() => {
-    const checkUserRole = async () => {
-      if (!user) {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        await ensureUserProfileExists(user);
+        setUserRole('Reviewer'); // Assume reviewer role after ensuring profile exists
         setRoleLoading(false);
-        return;
+      } else {
+        router.push('/login');
       }
-
-      try {
-        const userRef = doc(db, "users", user.uid);
-        const userDoc = await getDoc(userRef);
-        
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          setUserRole(userData.role);
-          
-          // Only redirect non-reviewers, don't redirect reviewers
-          if (userData.role !== 'Reviewer') {
-            if (userData.role === 'Admin') {
-              router.push('/admin');
-            } else {
-              router.push('/apply');
-            }
-          }
-        } else {
-          // User doesn't exist in database - for development, assume they're a reviewer if authenticated
-          // In production, you'd want to redirect to apply
-          console.warn(`User ${user.uid} not found in database. Assuming reviewer role for development.`);
-          setUserRole('Reviewer'); // Development fallback
-        }
-      } catch (error) {
-        console.error('Error checking user role:', error);
-        // Fallback: if we can't check the role but user is authenticated, assume reviewer for development
-        console.warn('Failed to check user role. Assuming reviewer role for development.');
-        setUserRole('Reviewer'); // Development fallback
-      } finally {
-        setRoleLoading(false);
-      }
-    };
-
-    if (user && !loading) {
-      checkUserRole();
-    }
-  }, [user, loading, router]);
+    });
+    return () => unsubscribe();
+  }, [router]);
 
   if (loading || roleLoading) {
     return (

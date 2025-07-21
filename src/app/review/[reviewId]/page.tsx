@@ -103,7 +103,7 @@ export default function PublicReviewPage({ params }: { params: Promise<{ reviewI
                     </div>
                     <h1 className="text-2xl font-bold mt-4">Review Not Found</h1>
                     <p className="text-muted-foreground mt-2">
-                        The review you're looking for doesn't exist or has been removed.
+                        The review you&apos;re looking for doesn&apos;t exist or has been removed.
                     </p>
                     <Button asChild className="mt-6">
                         <Link href="/">Submit a New Track</Link>
@@ -262,7 +262,7 @@ export default function PublicReviewPage({ params }: { params: Promise<{ reviewI
                 <Card>
                     <CardHeader>
                         <CardTitle className="text-green-600">🎯 Strengths</CardTitle>
-                        <CardDescription>What's working well in your track</CardDescription>
+                        <CardDescription>What&apos;s working well in your track</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="max-w-full overflow-hidden">

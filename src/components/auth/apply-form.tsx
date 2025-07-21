@@ -84,12 +84,14 @@ export default function ApplyForm({ appSettings }: { appSettings: AppSettings })
       form.reset();
       router.push('/');
 
-    } catch (error: any) {
+    } catch (error: unknown) {
        let description = "There was an error submitting your application. Please try again.";
-       if (error.code === 'auth/email-already-in-use') {
-           description = "This email address is already in use. Please try another one or login.";
-       } else if (error.message.includes("code is required") || error.message.includes("code is invalid") || error.message.includes("code is no longer active") || error.message.includes("code has expired")) {
-           description = error.message;
+       if (error instanceof Error) {
+           if (error.code === 'auth/email-already-in-use') {
+               description = "This email address is already in use. Please try another one or login.";
+           } else if (error.message.includes("code is required") || error.message.includes("code is invalid") || error.message.includes("code is no longer active") || error.message.includes("code has expired")) {
+               description = error.message;
+           }
        }
       toast({
         title: "Submission Failed",

@@ -57,10 +57,10 @@ function initializeAdminApp() {
         });
 
         console.log('Firebase Admin SDK initialized successfully.');
-    } catch (error: any) {
-        console.error('Firebase admin initialization error:', error.message);
+    } catch (error: unknown) {
+        console.error('Firebase admin initialization error:', error instanceof Error ? error.message : String(error));
         // Throw a more descriptive error to help with debugging
-        throw new Error(`Failed to initialize Firebase Admin SDK. Error: ${error.message}. Please ensure FIREBASE_SERVICE_ACCOUNT_BASE64 is a valid Base64-encoded service account key.`);
+        throw new Error(`Failed to initialize Firebase Admin SDK. Error: ${error instanceof Error ? error.message : String(error)}. Please ensure FIREBASE_SERVICE_ACCOUNT_BASE64 is a valid Base64-encoded service account key.`);
     }
 
     return admin.app();

@@ -87,9 +87,9 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ ap
             });
         }
         router.push('/admin/applications');
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Failed to update application status:", error);
-        toast({ title: "Update Failed", description: error.message || "Could not update application status.", variant: "destructive" });
+        toast({ title: "Update Failed", description: error instanceof Error ? error.message : "Could not update application status.", variant: "destructive" });
     } finally {
         setIsUpdating(false);
     }

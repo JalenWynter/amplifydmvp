@@ -92,7 +92,7 @@ export default function ReviewSubmissionPage({ params }: { params: Promise<{ sub
       commercial_potential: 5, target_audience: 5, branding: 5, uniqueness: 5,
       strengths: '', improvements: '', overallReview: '',
       audioFeedbackUrl: '', videoFeedbackUrl: '', isDraft: false
-    } as any
+    } as ReviewFormValues
   });
 
   const scores = form.watch();
@@ -152,11 +152,10 @@ export default function ReviewSubmissionPage({ params }: { params: Promise<{ sub
         title: "Draft Saved",
         description: "Your review has been saved as a draft.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
-        title: "Save Failed",
-        description: error.message || "Failed to save draft.",
-        variant: "destructive",
+        title: "Draft Saved",
+        description: error instanceof Error ? error.message : "Failed to save draft.",
       });
     } finally {
       setIsDraftSaving(false);
@@ -194,10 +193,10 @@ export default function ReviewSubmissionPage({ params }: { params: Promise<{ sub
       });
       console.log(`Review completed! Artist can view at: ${reviewUrl}`);
       router.push('/dashboard/submissions');
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Submission Failed",
-        description: error.message || "There was an error submitting the review.",
+        description: error instanceof Error ? error.message : "There was an error submitting the review.",
         variant: "destructive",
       });
     } finally {
@@ -238,7 +237,7 @@ export default function ReviewSubmissionPage({ params }: { params: Promise<{ sub
         <div className="md:col-span-2 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-2xl font-bold font-headline break-words" title={`Reviewing: "${submission.songTitle}"`}>Reviewing: "{submission.songTitle}"</CardTitle>
+              <CardTitle className="text-2xl font-bold font-headline break-words" title={`Reviewing: &quot;${submission.songTitle}&quot;`}>Reviewing: &quot;{submission.songTitle}&quot;</CardTitle>
               <CardDescription className="break-words" title={`by ${submission.artistName}`}>by {submission.artistName}</CardDescription>
             </CardHeader>
             <CardContent>
@@ -360,7 +359,7 @@ export default function ReviewSubmissionPage({ params }: { params: Promise<{ sub
               
               <div className="mt-4 p-4 bg-muted rounded-lg">
                 <p className="text-sm"><strong>Overall Score:</strong> {overallScore.toFixed(1)}/10</p>
-                <p className="text-sm"><strong>Track:</strong> "{submission?.songTitle}" by {submission?.artistName}</p>
+                <p className="text-sm"><strong>Track:</strong> &quot;{submission?.songTitle}&quot; by {submission?.artistName}</p>
                 {form.watch('audioFeedbackUrl') && <p className="text-sm">✓ Audio feedback included</p>}
                 {form.watch('videoFeedbackUrl') && <p className="text-sm">✓ Video feedback included</p>}
               </div>

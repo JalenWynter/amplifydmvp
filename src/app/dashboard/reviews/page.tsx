@@ -30,7 +30,7 @@ function EmptyState() {
                 <div className="text-center py-10">
                     <FileText className="mx-auto h-12 w-12 text-gray-400" />
                     <h3 className="mt-2 text-sm font-medium text-gray-900">No Reviews Completed</h3>
-                    <p className="mt-1 text-sm text-gray-500">You haven't completed any reviews yet.</p>
+                    <p className="mt-1 text-sm text-gray-500">You haven&apos;t completed any reviews yet.</p>
                 </div>
             </TableCell>
         </TableRow>
@@ -63,7 +63,7 @@ export default function ReviewsPage() {
         <Card>
             <CardHeader>
                 <CardTitle>My Completed Reviews</CardTitle>
-                <CardDescription>A history of all the feedback you've provided.</CardDescription>
+                <CardDescription>A history of all the feedback you&apos;ve provided.</CardDescription>
             </CardHeader>
             <CardContent>
                 <Table>

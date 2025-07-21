@@ -20,7 +20,7 @@ const chartConfig = {
   electronic: { label: "Electronic", color: "hsl(var(--chart-4))" },
 } satisfies ChartConfig
 
-export default function SubmissionTrendChart({ data }: { data: any[] }) {
+export default function SubmissionTrendChart({ data }: { data: { month: string; pop: number; rock: number; hiphop: number; electronic: number }[] }) {
   return (
      <ChartContainer config={chartConfig} className="min-h-[200px] w-full h-80">
       <AreaChart

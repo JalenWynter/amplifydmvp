@@ -94,7 +94,7 @@ export default function ReviewerProfilePage({ params }: { params: Promise<{ id: 
   const handleSelectPackage = (pkg: ReviewPackage) => {
       if (!reviewer) return;
       setSubmittingPackage(pkg.id);
-      toast({ title: "Let's Get Your Music", description: "You'll be redirected to the homepage to upload your track and complete your submission." });
+      toast({ title: "Let&apos;s Get Your Music", description: "You&apos;ll be redirected to the homepage to upload your track and complete your submission." });
       
       // Redirect to the submission form on the homepage with pre-selected reviewer and package
       setTimeout(() => {

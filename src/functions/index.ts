@@ -43,8 +43,8 @@ export const approveApplication = functions.https.onCall(async (data, context) =
             const userRecord = await admin.auth().getUserByEmail(appData.email);
             userId = userRecord.uid;
             userExists = true;
-        } catch (error: any) {
-            if (error.code === "auth/user-not-found") {
+        } catch (error: unknown) {
+            if (error instanceof Error && error.code === "auth/user-not-found") {
                 const newUser = await admin.auth().createUser({
                     email: appData.email,
                     emailVerified: false, // Or true, if you send a verification email
@@ -52,7 +52,7 @@ export const approveApplication = functions.https.onCall(async (data, context) =
                 });
                 userId = newUser.uid;
             } else {
-                throw new functions.https.HttpsError("internal", "Error checking for existing user.", error);
+                throw new functions.https.HttpsError("internal", "Error checking for existing user.", error instanceof Error ? error.message : String(error));
             }
         }
 
@@ -104,3 +104,26 @@ export const approveApplication = functions.https.onCall(async (data, context) =
         return { success: true, userId: userId };
     });
 });
+
+export const createUserDocument = functions.auth.user().onCreate(async (user) => {
+    const { uid, email, displayName } = user;
+
+    // Create a user document in Firestore
+    const newUser: Omit<User, "id"> = {
+        name: displayName || "New User",
+        email: email || "",
+        role: USER_ROLE.REVIEWER, // Default role for new sign-ups
+        status: USER_STATUS.ACTIVE,
+        joinedAt: new Date().toISOString(),
+        avatarUrl: "", // You might want a default avatar URL here
+    };
+
+    try {
+        await db.collection("users").doc(uid).set(newUser);
+        console.log(`User document created for ${uid} with role ${USER_ROLE.REVIEWER}`);
+    } catch (error) {
+        console.error(`Error creating user document for ${uid}:`, error);
+    }
+});
+
+

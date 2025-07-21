@@ -57,16 +57,14 @@ interface PackageFormProps {
 }
 
 export default function PackageForm({ pkg, onSave, onCancel, isSaving }: PackageFormProps) {
-  if (!pkg) return null;
-
   const form = useForm<PackageFormValues>({
     resolver: zodResolver(packageSchema),
     defaultValues: {
-      name: pkg.name || "",
-      priceInCents: pkg.priceInCents || 500,
-      description: pkg.description || "",
-      trackCount: pkg.trackCount || 1,
-      formats: pkg.formats || [],
+      name: pkg?.name || "",
+      priceInCents: pkg?.priceInCents || 500,
+      description: pkg?.description || "",
+      trackCount: pkg?.trackCount || 1,
+      formats: pkg?.formats || [],
     },
   });
   
@@ -74,13 +72,15 @@ export default function PackageForm({ pkg, onSave, onCancel, isSaving }: Package
     onSave(data);
   };
 
+  if (!pkg) return null;
+
   return (
      <Dialog open={true} onOpenChange={(isOpen) => !isOpen && onCancel()}>
         <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
                 <DialogTitle>{pkg.id ? 'Edit Package' : 'Add New Package'}</DialogTitle>
                 <DialogDescription>
-                    Define the details of your review service. Click save when you're done.
+                    Define the details of your review service. Click save when you&apos;re done.
                 </DialogDescription>
             </DialogHeader>
              <Form {...form}>

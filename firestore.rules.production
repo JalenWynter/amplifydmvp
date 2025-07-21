@@ -59,7 +59,8 @@ service cloud.firestore {
         && request.auth.uid == userId;
       
       // No public creation or deletion
-      allow create, delete: if false;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow delete: if false;
     }
     
     // APPLICATIONS COLLECTION - ADMIN ONLY

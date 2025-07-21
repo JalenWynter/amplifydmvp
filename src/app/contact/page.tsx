@@ -8,7 +8,7 @@ import Link from "next/link";
 const faqs = [
   {
     question: "How long does a review take?",
-    answer: "Our reviewers strive to complete reviews within their stated turnaround time, which is typically 3-5 business days. You can see the specific turnaround time on each reviewer's profile."
+    answer: "Our reviewers strive to complete reviews within their stated turnaround time, which is typically 3-5 business days. You can see the specific turnaround time on each reviewer&apos;s profile."
   },
   {
     question: "What happens after I pay?",

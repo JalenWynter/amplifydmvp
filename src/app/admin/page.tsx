@@ -1,8 +1,8 @@
 
 'use client';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { CheckSquare, Music, Users, UserCheck } from "lucide-react"
-import { getDashboardStats, DashboardStats, getUsers, User, getSubmissions, Submission } from "@/lib/firebase/services";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { getDashboardStats, DashboardStats, getUsers, User, getSubmissions, Submission, getRecentActivityEvents } from "@/lib/firebase/services";
+import { ActivityEvent } from "@/lib/types";
 import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { subMonths, format } from 'date-fns';
@@ -103,21 +103,24 @@ function processSubmissionDataForChart(submissions: Submission[]) {
 
 export default function AdminPage() {
     const [stats, setStats] = useState<DashboardStats | null>(null);
-    const [userGrowthData, setUserGrowthData] = useState<any[]>([]);
-    const [submissionTrendData, setSubmissionTrendData] = useState<any[]>([]);
+    const [userGrowthData, setUserGrowthData] = useState<{ month: string; users: number; reviewers: number }[]>([]);
+    const [submissionTrendData, setSubmissionTrendData] = useState<{ month: string; pop: number; rock: number; hiphop: number; electronic: number }[]>([]);
+    const [recentActivity, setRecentActivity] = useState<ActivityEvent[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         const fetchData = async () => {
             setIsLoading(true);
-            const [fetchedStats, fetchedUsers, fetchedSubmissions] = await Promise.all([
+            const [fetchedStats, fetchedUsers, fetchedSubmissions, fetchedActivity] = await Promise.all([
                 getDashboardStats(),
                 getUsers(),
-                getSubmissions({ all: true }) // Fetch all submissions for chart
+                getSubmissions({ all: true }), // Fetch all submissions for chart
+                getRecentActivityEvents(5) // Fetch recent activity events
             ]);
             setStats(fetchedStats);
             setUserGrowthData(processUserDataForChart(fetchedUsers));
             setSubmissionTrendData(processSubmissionDataForChart(fetchedSubmissions));
+            setRecentActivity(fetchedActivity);
             setIsLoading(false);
         }
         fetchData();
@@ -171,13 +174,30 @@ export default function AdminPage() {
                     <CardHeader>
                         <CardTitle>Recent Activity</CardTitle>
                         <CardDescription>
-                            Activity feed will show recent platform events and actions.
+                            Recent platform events and actions.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                       <div className="text-center py-10 border-2 border-dashed rounded-lg">
-                            <p className="text-muted-foreground">A proper activity feed requires a dedicated 'events' collection in Firestore.</p>
-                       </div>
+                       {isLoading ? (
+                            <Skeleton className="h-40 w-full" />
+                        ) : recentActivity.length > 0 ? (
+                            <ul className="space-y-2">
+                                {recentActivity.map((event) => (
+                                    <li key={event.id} className="border-b pb-2 last:border-b-0">
+                                        <p className="text-sm font-medium">{event.type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</p>
+                                        <p className="text-xs text-muted-foreground">{new Date(event.timestamp).toLocaleString()}</p>
+                                        {event.userEmail && <p className="text-xs text-muted-foreground">By: {event.userEmail}</p>}
+                                        {event.details && Object.keys(event.details).length > 0 && (
+                                            <p className="text-xs text-muted-foreground">Details: {JSON.stringify(event.details)}</p>
+                                        )}
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <div className="text-center py-10 border-2 border-dashed rounded-lg">
+                                <p className="text-muted-foreground">No recent activity to display.</p>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </div>

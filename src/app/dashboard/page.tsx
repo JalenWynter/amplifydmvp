@@ -157,7 +157,7 @@ export default function DashboardPage() {
                                 <Star className="w-6 h-6 text-blue-600" />
                                 <div>
                                     <div className="font-semibold text-blue-800">
-                                        Great job! You've earned ${earnings.totalEarnings.toFixed(2)}
+                                        Great job! You&apos;ve earned ${earnings.totalEarnings.toFixed(2)}
                                     </div>
                                     <div className="text-sm text-blue-600">
                                         Keep up the excellent work reviewing tracks.
@@ -172,7 +172,7 @@ export default function DashboardPage() {
                                         Ready to start earning?
                                     </div>
                                     <div className="text-sm text-gray-600">
-                                        When artists submit tracks, you'll see your earnings here.
+                                        When artists submit tracks, you&apos;ll see your earnings here.
                                     </div>
                                 </div>
                             </div>

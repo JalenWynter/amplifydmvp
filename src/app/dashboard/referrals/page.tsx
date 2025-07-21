@@ -37,7 +37,7 @@ function EmptyState() {
                 <div className="text-center py-10">
                     <Users className="mx-auto h-12 w-12 text-gray-400" />
                     <h3 className="mt-2 text-sm font-medium text-gray-900">No Referral Codes</h3>
-                    <p className="mt-1 text-sm text-gray-500">You haven't generated any referral codes yet.</p>
+                    <p className="mt-1 text-sm text-gray-500">You haven&apos;t generated any referral codes yet.</p>
                     <Button asChild className="mt-4">
                         <Link href="/dashboard/referrals/generate">
                             <PlusCircle className="mr-2 h-4 w-4" />
@@ -58,7 +58,7 @@ export default function ReviewerReferralsPage() {
     const [referralCodes, setReferralCodes] = useState<ReferralCode[]>([]);
     const [referralStats, setReferralStats] = useState<ReferralStats | null>(null);
     const [referralEarnings, setReferralEarnings] = useState<ReferralEarning[]>([]);
-    const [referralHistory, setReferralHistory] = useState<any>(null);
+    const [referralHistory, setReferralHistory] = useState<{ myReferralInfo: { referredBy: User | null; referralCode: ReferralCode | null; joinedAt: string; }; myGeneratedCodes: ReferralCode[]; myReferrals: User[]; } | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [_, setNow] = useState(new Date()); // Used to force re-renders for timeago
 
@@ -252,8 +252,8 @@ export default function ReviewerReferralsPage() {
                                         </Button>
                                     </div>
                                     <div className="text-sm text-green-700">
-                                        Share this code with music industry professionals you'd like to invite. 
-                                        It's valid for 24 hours from now.
+                                        Share this code with music industry professionals you&apos;d like to invite. 
+                                        It&apos;s valid for 24 hours from now.
                                     </div>
                                 </div>
                             </AlertDescription>
@@ -289,7 +289,7 @@ export default function ReviewerReferralsPage() {
                                 </div>
                             </div>
                             <div className="text-sm text-muted-foreground">
-                                💡 Thanks to their referral, you're now part of the Amplifyd reviewer community! 
+                                💡 Thanks to their referral, you&apos;re now part of the Amplifyd reviewer community! 
                                 Your referrer earns 7% commission on your earnings.
                             </div>
                         </div>
@@ -334,8 +334,8 @@ export default function ReviewerReferralsPage() {
                         </div>
                         <div className="mt-4 p-3 bg-gray-50 rounded-lg">
                             <p className="text-sm text-muted-foreground">
-                                📊 <strong>Total Stats:</strong> {referralHistory?.myGeneratedCodes?.length || 0} codes generated, {' '}
-                                {referralHistory?.myGeneratedCodes?.filter((c: ReferralCode) => c.status === 'Used').length || 0} used, {' '}
+                                📊 <strong>Total Stats:</strong> {referralHistory?.myGeneratedCodes?.length || 0} codes generated, {&apos; &apos;}
+                                {referralHistory?.myGeneratedCodes?.filter((c: ReferralCode) => c.status === 'Used').length || 0} used, {&apos; &apos;}
                                 {referralHistory?.myReferrals?.length || 0} people referred
                             </p>
                         </div>
@@ -524,4 +524,4 @@ export default function ReviewerReferralsPage() {
             </Card>
         </div>
     );
-} 
+}

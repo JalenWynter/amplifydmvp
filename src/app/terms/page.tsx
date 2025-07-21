@@ -10,7 +10,7 @@ export default function TermsPage() {
         <p>Last updated: {new Date().toLocaleDateString()}</p>
         <h2 className="text-xl font-semibold text-foreground">1. Introduction</h2>
         <p>
-          Welcome to Amplifyd! These Terms of Service ("Terms") govern your use of our website and services. By accessing or using Amplifyd, you agree to be bound by these Terms.
+          Welcome to Amplifyd! These Terms of Service (&quot;Terms&quot;) govern your use of our website and services. By accessing or using Amplifyd, you agree to be bound by these Terms.
         </p>
         <h2 className="text-xl font-semibold text-foreground">2. Service Description</h2>
         <p>

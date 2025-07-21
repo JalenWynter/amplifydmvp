@@ -35,7 +35,7 @@ export function trackMetric(name: string, value: number, unit: string): void {
  * @param eventName - The name of the event (e.g., 'user_signup').
  * @param properties - Additional properties for the event.
  */
-export function trackEvent(eventName: string, properties?: Record<string, any>): void {
+export function trackEvent(eventName: string, properties?: Record<string, unknown>): void {
   console.log(`[Monitoring] Event: ${eventName}`, properties);
   // e.g., mixpanel.track(eventName, properties);
 }

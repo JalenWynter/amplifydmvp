@@ -71,8 +71,8 @@ export async function createCheckoutSession(payload: CheckoutSessionPayload): Pr
         
         return { url: session.url };
 
-    } catch (error: any) {
-        console.error("Stripe session creation failed:", error.message);
-        return { error: error.message };
+    } catch (error: unknown) {
+        console.error("Stripe session creation failed:", error instanceof Error ? error.message : error);
+        return { error: error instanceof Error ? error.message : "An unknown error occurred." };
     }
 }

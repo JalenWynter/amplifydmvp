@@ -89,7 +89,7 @@ export default function GenerateReferralCodePage() {
             setCodesCreatedToday(prev => prev + 1);
             toast({
                 title: "Referral Code Generated! 🎉",
-                description: `Your invite code: ${newCode.code} - Share this with industry professionals you'd like to invite.`,
+                description: `Your invite code: ${newCode.code} - Share this with industry professionals you&apos;d like to invite.`,
                 duration: 8000, // Show toast longer
             });
             // Include the code ID in the redirect to highlight it
@@ -183,7 +183,7 @@ export default function GenerateReferralCodePage() {
                             <Info className="h-4 w-4 text-orange-600" />
                             <AlertTitle className="text-orange-900">Daily Limit Reached</AlertTitle>
                             <AlertDescription className="text-orange-800">
-                                You've generated 10 referral codes today. The daily limit resets at midnight to ensure fair usage across all reviewers.
+                                You&apos;ve generated 10 referral codes today. The daily limit resets at midnight to ensure fair usage across all reviewers.
                             </AlertDescription>
                         </Alert>
                     )}
@@ -192,8 +192,8 @@ export default function GenerateReferralCodePage() {
                         <Info className="h-4 w-4" />
                         <AlertTitle>How It Works</AlertTitle>
                         <AlertDescription>
-                            Your referral code will be valid for 24 hours and can only be used once. 
-                            Share it with music industry professionals you'd like to invite to join Amplifyd as reviewers.
+                                                        Your referral code will be valid for 24 hours and can only be used once. 
+                            Share it with music industry professionals you&apos;d like to invite to join Amplifyd as reviewers.
                         </AlertDescription>
                     </Alert>
                 </CardContent>

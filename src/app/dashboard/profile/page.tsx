@@ -4,7 +4,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Edit, Trash2, Mic, Film, FileText, BarChart3, Package, Loader2, Save } from "lucide-react";
-import { Reviewer, ReviewPackage, getReviewerById, addPackage, updatePackage, deletePackage, updateReviewerProfile } from "@/lib/firebase/services";
+import { Reviewer, ReviewPackage, getReviewerById, addPackage, updatePackage, deletePackage, updateReviewerProfile, getCurrentUserInfo } from "@/lib/firebase/services";
 import React, { useState, useEffect, useCallback } from "react";
 import {
   AlertDialog,
@@ -90,7 +90,7 @@ function PackageCard({ pkg, onEdit, onDelete }: { pkg: ReviewPackage; onEdit: (p
                             <AlertDialogHeader>
                                 <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                    This will permanently delete the "{pkg.name}" package. This action cannot be undone.
+                                    This will permanently delete the &quot;{pkg.name}&quot; package. This action cannot be undone.
                                 </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
@@ -182,49 +182,47 @@ function ProfileForm({ reviewer, onProfileUpdate }: { reviewer: Reviewer | null,
 
 export default function ProfilePage() {
     const [reviewer, setReviewer] = useState<Reviewer | null>(null);
-    const [userInfo, setUserInfo] = useState<any>(null);
+    const [userInfo, setUserInfo] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [editingPackage, setEditingPackage] = useState<Partial<ReviewPackage> | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const { toast } = useToast();
 
     const loadProfile = useCallback(async () => {
-        if (!auth.currentUser) return;
-        setIsLoading(true);
-        
-        try {
-            // First check if user exists in users collection
-            const userRef = doc(db, "users", auth.currentUser.uid);
-            const userDoc = await getDoc(userRef);
-            
-            if (userDoc.exists()) {
-                const userData = userDoc.data();
-                setUserInfo(userData);
-                
-                // Only try to load reviewer profile if user is a reviewer
-                if (userData.role === 'Reviewer') {
-                    const profile = await getReviewerById(auth.currentUser.uid);
-                    setReviewer(profile);
-                } else {
-                    // User exists but is not a reviewer
-                    setReviewer(null);
-                }
-            } else {
-                // User doesn't exist in users collection
-                setUserInfo(null);
-                setReviewer(null);
-            }
-        } catch (error) {
-            console.error("Error loading profile:", error);
-            setUserInfo(null);
-            setReviewer(null);
-        } finally {
-            setIsLoading(false);
+      console.log("[ProfilePage] loadProfile called.");
+      if (!auth.currentUser) {
+        console.log("[ProfilePage] No authenticated user in loadProfile.");
+        setIsLoading(false);
+        return;
+      }
+
+      console.log("[ProfilePage] Authenticated user UID:", auth.currentUser.uid);
+      try {
+        const currentUserInfo = await getCurrentUserInfo();
+        setUserInfo(currentUserInfo);
+        console.log("[ProfilePage] currentUserInfo:", currentUserInfo);
+
+        if (currentUserInfo) {
+          console.log("[ProfilePage] User document found, attempting to load reviewer profile.");
+          const profile = await getReviewerById(auth.currentUser.uid);
+          setReviewer(profile);
+          console.log("[ProfilePage] Reviewer profile:", profile);
+        } else {
+          console.log("[ProfilePage] No user document found for authenticated user.");
+          setReviewer(null); // Indicate no reviewer profile could be loaded
         }
-    }, []);
+        setIsLoading(false);
+      } catch (error) {
+        console.error("[ProfilePage] Error loading profile:", error);
+        // setError(true); // Assuming setError is defined elsewhere if needed
+        setIsLoading(false);
+      }
+    }, [/* dependencies */]); // Removed loadProfile from dependencies to prevent infinite loop
 
     useEffect(() => {
+        console.log("[ProfilePage] useEffect for auth state change.");
         const unsubscribe = auth.onAuthStateChanged(user => {
+            console.log("[ProfilePage] Auth state changed. User:", user);
             if (user) {
                 loadProfile();
             } else {
@@ -302,23 +300,7 @@ export default function ProfilePage() {
         );
     }
 
-    // Handle case where user exists but is not a reviewer
-    if (userInfo && userInfo.role !== 'Reviewer') {
-        return (
-            <div className="text-center py-20">
-                <h1 className="text-2xl font-bold">Access Denied</h1>
-                <p className="text-muted-foreground">
-                    This area is only accessible to reviewers. Your account role is: {userInfo.role}
-                </p>
-                <p className="text-sm text-muted-foreground mt-2">
-                    User ID: {auth.currentUser.uid}
-                </p>
-                <Button asChild className="mt-4">
-                    <Link href="/apply">Apply to Become a Reviewer</Link>
-                </Button>
-            </div>
-        );
-    }
+    
 
     // Handle case where user doesn't exist in users collection
     if (!userInfo) {
@@ -338,8 +320,8 @@ export default function ProfilePage() {
         );
     }
 
-    // Handle case where user is a reviewer but no reviewer document exists
-    if (userInfo.role === 'Reviewer' && !reviewer) {
+    // Handle case where user exists but no reviewer document exists (all signed-in users are reviewers)
+    if (userInfo && !reviewer) {
         return (
             <div className="text-center py-20">
                 <h1 className="text-2xl font-bold">Reviewer Profile Not Found</h1>

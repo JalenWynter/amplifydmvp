@@ -28,7 +28,7 @@ const submissionSchema = z.object({
   songTitle: z.string().min(2, { message: "Song title must be at least 2 characters." }),
   contactEmail: z.string().email({ message: "Please enter a valid email address." }),
   genre: z.string().min(1, "Please select a genre."),
-  musicFile: z.any().refine(file => file?.length == 1, "Music file is required."),
+  musicFile: z.custom<FileList>().refine(file => file?.length == 1, "Music file is required."),
   reviewerId: z.string().min(1, "Please select a reviewer."),
   packageId: z.string().min(1, "Please select a package."),
 });

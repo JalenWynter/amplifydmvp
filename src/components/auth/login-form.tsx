@@ -48,10 +48,12 @@ export default function LoginForm() {
         description: "Redirecting you to your dashboard.",
       });
       router.push('/dashboard');
-    } catch (error: any) {
+    } catch (error: unknown) {
       let description = "An unknown error occurred. Please try again.";
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-        description = "Invalid email or password. Please check your credentials and try again.";
+      if (error instanceof Error) {
+          if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+            description = "Invalid email or password. Please check your credentials and try again.";
+          }
       }
       toast({
         title: "Login Failed",

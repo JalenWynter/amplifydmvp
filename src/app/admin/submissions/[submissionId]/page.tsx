@@ -56,7 +56,7 @@ export default function AdminSubmissionReviewPage({ params }: { params: Promise<
             commercial_potential: 5, target_audience: 5, branding: 5, uniqueness: 5,
             strengths: '', improvements: '', overallReview: '',
             audioFeedbackUrl: '', videoFeedbackUrl: '', isDraft: false
-        } as any
+        } as ReviewFormValues
     });
 
     const scores = form.watch();
@@ -126,10 +126,10 @@ export default function AdminSubmissionReviewPage({ params }: { params: Promise<
             
             console.log(`Admin review completed! Artist can view at: ${reviewUrl}`);
             router.push('/admin/submissions');
-        } catch (error: any) {
+        } catch (error: unknown) {
             toast({
                 title: "Submission Failed",
-                description: error.message || "There was an error submitting the review.",
+                description: error instanceof Error ? error.message : "There was an error submitting the review.",
                 variant: "destructive",
             });
         } finally {
