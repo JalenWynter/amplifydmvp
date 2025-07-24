@@ -2,7 +2,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -17,25 +16,22 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import { Loader2, UploadCloud, User, CreditCard, Music, FileAudio, CheckCircle } from "lucide-react";
-import { getReviewers, Reviewer, ReviewPackage, uploadFile } from "@/lib/firebase/services";
+import { getReviewers } from "@/lib/firebase/services"; // Keep this for now, will move later
+import { Reviewer, ReviewPackage, SubmissionSchema as BaseSubmissionSchema } from "@/lib/types";
+import { z } from 'zod';
+import { uploadMusicFile } from "@/lib/firebase/submissions";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card";
 import { createCheckoutSession } from "@/app/actions/stripe";
 import { Separator } from "../ui/separator";
 
-const submissionSchema = z.object({
-  artistName: z.string().min(2, { message: "Artist name must be at least 2 characters." }),
-  songTitle: z.string().min(2, { message: "Song title must be at least 2 characters." }),
-  contactEmail: z.string().email({ message: "Please enter a valid email address." }),
-  genre: z.string().min(1, "Please select a genre."),
-  musicFile: z.custom<FileList>().refine(file => file?.length == 1, "Music file is required."),
-  reviewerId: z.string().min(1, "Please select a reviewer."),
-  packageId: z.string().min(1, "Please select a package."),
+
+// Extend the base schema to include musicFile for the form
+const SubmissionSchema = BaseSubmissionSchema.extend({
+  musicFile: z.any().optional(),
 });
 
-type SubmissionFormValues = z.infer<typeof submissionSchema>;
-
-export default function SubmissionForm() {
+export default function SubmissionForm({ preselectedReviewerId: initialReviewerId }: { preselectedReviewerId?: string }) {
   const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -46,7 +42,7 @@ export default function SubmissionForm() {
   const [selectedPackage, setSelectedPackage] = useState<ReviewPackage | null>(null);
 
   // Get pre-selected reviewer and package from URL parameters
-  const preselectedReviewerId = searchParams.get('reviewerId');
+  const preselectedReviewerId = searchParams.get('reviewerId') || initialReviewerId;
   const preselectedPackageId = searchParams.get('packageId');
 
   useEffect(() => {
@@ -57,8 +53,8 @@ export default function SubmissionForm() {
     fetchReviewers();
   }, []);
 
-  const form = useForm<SubmissionFormValues>({
-    resolver: zodResolver(submissionSchema),
+  const form = useForm<z.infer<typeof SubmissionSchema>>({
+    resolver: zodResolver(SubmissionSchema),
     defaultValues: {
       artistName: "",
       songTitle: "",
@@ -123,7 +119,7 @@ export default function SubmissionForm() {
   }, [searchParams, reviewers, selectedReviewer]);
 
 
-  async function onSubmit(data: SubmissionFormValues) {
+  async function onSubmit(data: z.infer<typeof SubmissionSchema>) {
     setIsSubmitting(true);
     
     if (!selectedReviewer || !selectedPackage) {
@@ -136,7 +132,7 @@ export default function SubmissionForm() {
       // Step 1: Upload the file to Firebase Storage.
       const file: File = data.musicFile[0];
       toast({ title: "Uploading your track..." });
-      const audioUrl = await uploadFile(file);
+      const audioUrl = await uploadMusicFile(file);
       
       toast({ title: "Track uploaded! Redirecting to payment..." });
 
@@ -163,11 +159,17 @@ export default function SubmissionForm() {
       // Step 3: Redirect user to Stripe
       router.push(checkoutResult.url);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Submission failed:", error);
+      let errorMessage = "An unknown error occurred.";
+      if (error instanceof Error) {
+          errorMessage = error.message;
+      } else if (typeof error === "object" && error !== null && "message" in error) {
+          errorMessage = (error as { message: string }).message;
+      }
       toast({
         title: "Submission Failed",
-        description: error.message || "There was an error submitting your track. Please try again.",
+        description: errorMessage || "There was an error submitting your track. Please try again.",
         variant: "destructive",
       });
       setIsSubmitting(false);

@@ -4,7 +4,8 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { getAppSettings, updateAppSettings, AppSettings } from "@/lib/firebase/services";
+import { getAppSettings, updateAppSettings } from "@/lib/firebase/services";
+import { AppSettings } from '@/lib/types';
 import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";

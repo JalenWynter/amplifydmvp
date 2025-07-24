@@ -1,0 +1,8 @@
+[
+  {
+    "origin": ["http://localhost:9002", "https://amplifydmvp.web.app"],
+    "method": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    "responseHeader": ["Content-Type"],
+    "maxAgeSeconds": 3600
+  }
+]

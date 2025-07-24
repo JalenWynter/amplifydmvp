@@ -8,12 +8,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, CheckCircle, Clock, CreditCard, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { getPayoutById, Payout, updatePayoutStatus } from "@/lib/firebase/services";
+import { updatePayoutStatus, getPayoutById } from "@/lib/firebase/services";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState, useEffect, useCallback, use } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { getStatusBadgeVariant } from "@/components/ui/badge";
+import type { Payout } from '@/lib/types';
 
 function PayoutDetailSkeleton() {
     return (
@@ -132,7 +133,7 @@ export default function PayoutDetailPage({ params }: { params: Promise<{ payoutI
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {payout.reviews.map(review => (
+                                {payout.reviews.map((review: { id: string; date: string; artist: string; song: string; fee: number; }) => (
                                     <TableRow key={review.id}>
                                         <TableCell className="font-medium">{review.artist}</TableCell>
                                         <TableCell>{review.song}</TableCell>

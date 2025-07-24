@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster"
 import Header from '@/components/shared/header';
 import Footer from '@/components/shared/footer';
 import { Inter, Source_Code_Pro } from 'next/font/google';
+import { AuthProvider } from '@/context/AuthContext';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -22,6 +23,8 @@ export const metadata: Metadata = {
   description: 'Submit your music for review by industry professionals. Amplify your sound and get guaranteed feedback from verified A&Rs, producers, and music journalists.',
 };
 
+import AuthDebugger from '@/components/shared/AuthDebugger';
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -30,14 +33,17 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className={`${inter.variable} ${sourceCodePro.variable}`}>
       <body className="font-body antialiased bg-background text-foreground">
-        <div className="flex flex-col min-h-screen">
-          <Header />
-          <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            {children}
-          </main>
-          <Footer />
-        </div>
-        <Toaster />
+        <AuthProvider>
+          <div className="flex flex-col min-h-screen">
+            <Header />
+            <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              {children}
+            </main>
+            <Footer />
+          </div>
+          <Toaster />
+          <AuthDebugger />
+        </AuthProvider>
       </body>
     </html>
   );

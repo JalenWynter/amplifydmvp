@@ -41,10 +41,175 @@ This document summarizes the comprehensive updates made to the Amplifyd music re
   - `getAdminUsers()` - Get admin users for notifications
   - `submitReviewAsAdmin()` - Allow admins to submit reviews on behalf of reviewers
   - `getSubmissionsForAdmin()` - Get all submissions for admin management
+  - `uploadImage()` - Uploads an image file to Firebase Storage's `/images` path.
+  - `stripeWebhook()` - Handles Stripe webhook events, including `checkout.session.completed` to create submissions.
 
 - **Updated Functions**:
   - `createSubmissionFromWebhook()` - Now sends notifications
   - `submitReview()` - Now sends completion notifications
+
+### **Image Upload Functionality**
+
+**Location**: `/src/lib/firebase/images.ts`
+
+**Purpose**: Provides a client-side utility to securely upload image files (e.g., for marketing materials, blog posts) to Firebase Storage. Images are stored in the `/images` path and are publicly readable, with write access restricted to authenticated users.
+
+**Usage Example**:
+
+```typescript
+import { uploadImage } from '@/lib/firebase/services';
+
+async function handleImageUpload(event: React.ChangeEvent<HTMLInputElement>) {
+  const file = event.target.files?.[0];
+  if (file) {
+    try {
+      const imageUrl = await uploadImage(file);
+      console.log('Image uploaded successfully:', imageUrl);
+      // You can now save this URL to Firestore or display the image
+    } catch (error) {
+      console.error('Error uploading image:', error);
+    }
+  }
+}
+
+// In your React component:
+// <input type="file" accept="image/*" onChange={handleImageUpload} />
+```
+
+### **Audio/Video Feedback Upload Functionality**
+
+**Location**: `/src/lib/firebase/feedback.ts`
+
+**Purpose**: Provides client-side utilities for reviewers to upload audio and video feedback files to Firebase Storage. These files are stored in paths specific to the reviewer and submission, and write access is restricted to authenticated reviewers and admins.
+
+**Usage Example (Audio Feedback)**:
+
+```typescript
+import { uploadAudioFeedback } from '@/lib/firebase/services';
+
+async function handleAudioFeedbackUpload(file: File, reviewerId: string, submissionId: string) {
+  try {
+    const audioUrl = await uploadAudioFeedback(file, reviewerId, submissionId);
+    console.log('Audio feedback uploaded successfully:', audioUrl);
+    // Save audioUrl to the review document in Firestore
+  } catch (error) {
+    console.error('Error uploading audio feedback:', error);
+  }
+}
+```
+
+**Usage Example (Video Feedback)**:
+
+```typescript
+import { uploadVideoFeedback } from '@/lib/firebase/services';
+
+async function handleVideoFeedbackUpload(file: File, reviewerId: string, submissionId: string) {
+  try {
+    const videoUrl = await uploadVideoFeedback(file, reviewerId, submissionId);
+    console.log('Video feedback uploaded successfully:', videoUrl);
+    // Save videoUrl to the review document in Firestore
+  } catch (error) {
+    console.error('Error uploading video feedback:', error);
+  }
+}
+```
+
+### **Application Management Functionality**
+
+**Location**: `/src/lib/firebase/users.ts` (client-side) and `/functions/src/callable/` (Cloud Functions)
+
+**Purpose**: Provides secure, server-side functions for administrators to manage reviewer applications, including approval and rejection.
+
+**New Functions**:
+- `approveApplication(applicationId: string)`: Approves a pending reviewer application, creates a user account, and sets up their reviewer profile.
+- `rejectApplication(applicationId: string)`: Rejects a pending reviewer application.
+
+**Usage Example (Client-Side)**:
+
+```typescript
+import { approveApplication, rejectApplication } from '@/lib/firebase/users';
+
+// To approve an application:
+async function handleApprove(applicationId: string) {
+  try {
+    const result = await approveApplication(applicationId);
+    console.log(result.message);
+  } catch (error) {
+    console.error('Approval failed:', error);
+  }
+}
+
+// To reject an application:
+async function handleReject(applicationId: string) {
+  try {
+    const result = await rejectApplication(applicationId);
+    console.log(result.message);
+  } catch (error) {
+    console.error('Rejection failed:', error);
+  }
+}
+```
+
+### **Payout Management Functionality**
+
+**Location**: `/src/lib/firebase/payouts.ts` (client-side) and `/functions/src/callable/` (Cloud Functions)
+
+**Purpose**: Provides secure, server-side functions for administrators to manage reviewer payouts, including creation and status updates.
+
+**New Functions**:
+- `createPayout(payoutData: Payout)`: Creates a new payout record for a reviewer.
+- `updatePayoutStatus(payoutId: string, status: Payout['status'])`: Updates the status of an existing payout (e.g., to 'Paid').
+
+**Usage Example (Client-Side)**:
+
+```typescript
+import { createPayout, updatePayoutStatus } from '@/lib/firebase/payouts';
+import { Payout } from '@/lib/types';
+
+// To create a payout:
+async function handleCreatePayout(payoutData: Omit<Payout, 'id' | 'date' | 'status' | 'amount'> & { amountInCents: number }) {
+  try {
+    const result = await createPayout(payoutData);
+    console.log(result.message);
+  } catch (error) {
+    console.error('Payout creation failed:', error);
+  }
+}
+
+// To mark a payout as paid:
+async function handleMarkAsPaid(payoutId: string) {
+  try {
+    const result = await updatePayoutStatus(payoutId, 'Paid');
+    console.log(result.message);
+  } catch (error) {
+    console.error('Payout status update failed:', error);
+  }
+}
+```
+
+### **Referral Code Management Functionality**
+
+**Location**: `/src/lib/firebase/referrals.ts` (client-side) and `/functions/src/callable/createReferralCode.ts` (Cloud Function)
+
+**Purpose**: Provides secure, server-side functions for administrators to generate and manage referral codes for reviewer recruitment.
+
+**New Functions**:
+- `createReferralCode(associatedUser: string, referrerId: string)`: Generates a new unique referral code.
+
+**Usage Example (Client-Side)**:
+
+```typescript
+import { createReferralCode } from '@/lib/firebase/referrals';
+
+async function handleCreateReferralCode(associatedUser: string, referrerId: string) {
+  try {
+    const result = await createReferralCode(associatedUser, referrerId);
+    console.log(`Referral code ${result.code} created: ${result.message}`);
+  } catch (error) {
+    console.error('Referral code creation failed:', error);
+  }
+}
+```
 
 ### 5. **Admin Review Management**
 - **Admin Submissions Page** (`/src/app/admin/submissions/page.tsx`):
@@ -201,4 +366,4 @@ STRIPE_WEBHOOK_SECRET=your_webhook_secret
 **Implementation Status**: ✅ **COMPLETE**  
 **Security Level**: 🔒 **PRODUCTION-READY**  
 **Workflow Status**: 🎯 **FULLY FUNCTIONAL**  
-**Notification System**: 📧 **OPERATIONAL** 
+**Notification System**: 📧 **OPERATIONAL**

@@ -5,14 +5,27 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getSubmissionById, getReviewers, submitReviewAsAdmin, Submission, Reviewer } from "@/lib/firebase/services";
+import { getSubmissionById, getReviewers } from "@/lib/firebase/services";
+import { submitReviewAsAdmin } from "@/lib/firebase/reviews";
+import { Submission, Reviewer, ReviewSchema } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ShieldX, Loader2, User, Calendar, Music, FileAudio, Crown } from "lucide-react";
-import ScoringChart, { reviewSchema, ReviewFormValues } from "@/components/review/scoring-chart";
+import ScoringChart from "@/components/review/scoring-chart";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { ReviewFormValues } from '@/lib/types';
+import { z } from 'zod';
+
+// Add this schema for the form fields only
+const ReviewFormSchema = z.object({
+  summary: z.string(),
+  scores: z.record(z.string(), z.number()),
+  overallScore: z.number(),
+  strengths: z.string(),
+  improvements: z.string(),
+});
 
 function ReviewSkeleton() {
     return (
@@ -48,15 +61,19 @@ export default function AdminSubmissionReviewPage({ params }: { params: Promise<
     const router = useRouter();
 
     const form = useForm<ReviewFormValues>({
-        resolver: zodResolver(reviewSchema),
+        resolver: zodResolver(ReviewFormSchema),
         defaultValues: {
-            originality: 5, structure: 5, melody: 5, lyrics: 5,
-            vocal_performance: 5, instrumental_performance: 5, energy: 5, technical_skill: 5,
-            sound_quality: 5, mixing: 5, sound_design: 5, mastering: 5,
-            commercial_potential: 5, target_audience: 5, branding: 5, uniqueness: 5,
-            strengths: '', improvements: '', overallReview: '',
-            audioFeedbackUrl: '', videoFeedbackUrl: '', isDraft: false
-        } as ReviewFormValues
+            scores: {
+                originality: 5, structure: 5, melody: 5, lyrics: 5,
+                vocal_performance: 5, instrumental_performance: 5, energy: 5, technical_skill: 5,
+                sound_quality: 5, mixing: 5, sound_design: 5, mastering: 5,
+                commercial_potential: 5, target_audience: 5, branding: 5, uniqueness: 5,
+            },
+            strengths: '',
+            improvements: '',
+            summary: '',
+            overallScore: 5,
+        }
     });
 
     const scores = form.watch();
@@ -112,19 +129,26 @@ export default function AdminSubmissionReviewPage({ params }: { params: Promise<
         setIsLoading(true);
 
         try {
-            const { reviewId, reviewUrl } = await submitReviewAsAdmin(
-                submission, 
-                data, 
-                overallScore, 
-                selectedReviewerId
-            );
-            
+            // Construct a review object from form data
+            const review = {
+                summary: data.summary,
+                scores: data.scores,
+                overallScore: data.overallScore,
+                strengths: data.strengths,
+                improvements: data.improvements,
+                submissionId: submission.id,
+                reviewerId: selectedReviewerId,
+                createdAt: new Date().toISOString(),
+                submissionDetails: {
+                    artistName: submission.artistName,
+                    songTitle: submission.songTitle,
+                },
+            };
+            await submitReviewAsAdmin(review, selectedReviewerId);
             toast({
                 title: "Review Submitted!",
                 description: `Review completed on behalf of selected reviewer. Artist will receive notification.`,
             });
-            
-            console.log(`Admin review completed! Artist can view at: ${reviewUrl}`);
             router.push('/admin/submissions');
         } catch (error: unknown) {
             toast({
@@ -167,7 +191,7 @@ export default function AdminSubmissionReviewPage({ params }: { params: Promise<
                                 <CardDescription>Complete review on behalf of reviewer</CardDescription>
                             </div>
                         </div>
-                        <Badge variant={submission.status === 'Pending Review' ? 'destructive' : 'secondary'}>
+                        <Badge variant={submission.status === 'pending' ? 'destructive' : 'secondary'}>
                             {submission.status}
                         </Badge>
                     </div>

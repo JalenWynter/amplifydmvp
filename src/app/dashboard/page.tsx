@@ -7,10 +7,11 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ArrowUpRight, DollarSign, Music, Star, FileAudio, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
-import { getSubmissions, Submission, getReviewsByReviewer, Review, getReviewerEarnings, hasReviewerSubmittedReview } from "@/lib/firebase/services";
+import { getSubmissions, getReviewsByReviewer, getReferralEarnings, hasReviewerSubmittedReview } from "@/lib/firebase/services";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "@/lib/firebase/client";
+import type { Submission, Review } from '@/lib/types';
 
 function StatCardSkeleton() {
     return (
@@ -91,12 +92,19 @@ export default function DashboardPage() {
             const [fetchedSubmissions, fetchedReviews, fetchedEarnings] = await Promise.all([
                 getSubmissions({ reviewerId: user.uid }),
                 getReviewsByReviewer(user.uid),
-                getReviewerEarnings(user.uid)
+                getReferralEarnings(user.uid)
             ]);
             
             setSubmissions(fetchedSubmissions);
             setReviews(fetchedReviews);
-            setEarnings(fetchedEarnings);
+            setEarnings({
+                totalEarnings: fetchedEarnings.reduce((sum, e) => sum + e.commissionAmount, 0),
+                completedReviews: reviews.length,
+                pendingEarnings: 0, // or your logic
+                averageEarningPerReview: reviews.length ? fetchedEarnings.reduce((sum, e) => sum + e.commissionAmount, 0) / reviews.length : 0,
+                referralEarnings: 0, // or your logic
+                totalEarningsWithReferrals: 0 // or your logic
+            });
             
             // Check review status for each submission
             const reviewStatusMap: Record<string, boolean> = {};
@@ -118,8 +126,8 @@ export default function DashboardPage() {
     
     const stats = [
         { title: "Pending Reviews", value: pendingReviewsCount.toString(), icon: Music },
-        { title: "Available Earnings", value: earnings ? `$${(earnings.totalEarnings + earnings.pendingEarnings + (earnings.referralEarnings / 100)).toFixed(2)}` : "$0.00", icon: DollarSign },
-        { title: "Completed Reviews", value: earnings ? earnings.completedReviews.toString() : "0", icon: Star },
+        { title: "Available Earnings", value: earnings ? `${((earnings.totalEarnings || 0) + (earnings.pendingEarnings || 0) + ((earnings.referralEarnings || 0) / 100)).toFixed(2)}` : "$0.00", icon: DollarSign },
+        { title: "Completed Reviews", value: earnings ? (earnings.completedReviews || 0).toString() : "0", icon: Star },
     ];
 
     return (

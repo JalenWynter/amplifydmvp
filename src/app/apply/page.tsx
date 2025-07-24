@@ -1,11 +1,20 @@
 import ApplyForm from "@/components/auth/apply-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getAppSettingsAdmin } from "@/lib/firebase/admin";
 import { ListChecks } from "lucide-react";
 import Link from "next/link";
 
+export const dynamic = 'force-dynamic';
+
+async function getAppSettings() {
+  const response = await fetch(`${process.env.NEXT_PUBLIC_HOST_URL}/api/admin/app-settings`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch app settings');
+  }
+  return response.json();
+}
+
 export default async function ApplyPage() {
-  const appSettings = await getAppSettingsAdmin();
+  const appSettings = await getAppSettings();
 
   return (
     <div className="grid md:grid-cols-2 gap-12 items-start">

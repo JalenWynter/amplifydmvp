@@ -1,12 +1,17 @@
 const admin = require('firebase-admin');
 
-// Ensure emulator hosts are set
-process.env.FIREBASE_AUTH_EMULATOR_HOST = '127.0.0.1:9099';
-process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080';
+// Production Firebase Admin SDK initialization
+// Comment out emulator settings for production
+// process.env.FIREBASE_AUTH_EMULATOR_HOST = '127.0.0.1:9099';
+// process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080';
 
-// Initialize Firebase Admin SDK
-// Use a dummy project ID for emulator only
+// Initialize Firebase Admin SDK for production
+// You need to download service account key from Firebase Console
+// Project Settings > Service Accounts > Generate New Private Key
+const serviceAccount = require('./serviceAccountKey.json');
+
 admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
   projectId: 'amplifydmvp',
 });
 
@@ -18,25 +23,25 @@ const usersToSeed = [
     email: 'jwynterthomas@gmail.com',
     password: 'password123',
     displayName: 'Admin User',
-    role: 'Admin',
+    role: 'admin',
   },
   {
     email: 'brenda.lee@amplifyd.com',
     password: 'password123',
     displayName: 'Brenda "Vocals" Lee',
-    role: 'Reviewer',
+    role: 'reviewer',
   },
   {
     email: 'alex.chen@amplifyd.com',
     password: 'password123',
     displayName: 'Alex "Synth" Chen',
-    role: 'Reviewer',
+    role: 'reviewer',
   },
   {
     email: 'cosmic@dreamer.com',
     password: 'password123',
     displayName: 'Cosmic Dreamer',
-    role: 'Artist',
+    role: 'artist',
   },
 ];
 
@@ -69,7 +74,7 @@ async function seedAuthAndFirestoreUsers() {
       console.log(`Successfully created Firestore user document for ${user.email}`);
 
       // 3. If role is Reviewer, create corresponding reviewer document in Firestore
-      if (user.role === 'Reviewer') {
+      if (user.role === 'reviewer') {
         const reviewerDocRef = db.collection('reviewers').doc(uid);
         await reviewerDocRef.set({
           id: uid,
@@ -108,7 +113,7 @@ async function seedAuthAndFirestoreUsers() {
         }, { merge: true }); // Use merge to update existing fields
         console.log(`Successfully updated Firestore user document for ${user.email}`);
 
-        if (user.role === 'Reviewer') {
+        if (user.role === 'reviewer') {
           const reviewerDocRef = db.collection('reviewers').doc(uid);
           await reviewerDocRef.set({
             id: uid,

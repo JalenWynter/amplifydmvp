@@ -13,24 +13,34 @@ import { useEffect, useState } from 'react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
-import { ensureUserProfileExists } from '@/lib/firebase/services';
+import { getCurrentUserInfo } from '@/lib/firebase/users';
+import type { User as AppUser } from '@/lib/types';
 
-const sidebarNavItems = [
+const reviewerNavItems = [
   { href: '/dashboard', label: 'Home', icon: Home },
+  { href: '/dashboard/reviewer', label: 'Reviewer Dashboard', icon: Star },
   { href: '/dashboard/submissions', label: 'Submissions', icon: Music },
   { href: '/dashboard/reviews', label: 'My Reviews', icon: Star },
   { href: '/dashboard/referrals', label: 'Referrals', icon: Users },
   { href: '/dashboard/profile', label: 'Profile', icon: User },
 ];
 
-const NavContent = ({ user, pathname }: { user: User, pathname: string }) => (
+const artistNavItems = [
+  { href: '/artist-dashboard', label: 'My Submissions', icon: Music },
+  { href: '/dashboard/profile', label: 'Profile', icon: User },
+];
+
+const NavContent = ({ user, pathname, userRole }: { user: AppUser, pathname: string, userRole: string | null }) => {
+  const currentNavItems = userRole === 'artist' ? artistNavItems : reviewerNavItems;
+
+  return (
     <>
       <div className="flex h-16 items-center border-b px-6 lg:h-20">
           <Logo />
       </div>
       <div className="flex-1 overflow-auto py-2">
           <nav className="grid items-start px-4 text-sm font-medium">
-              {sidebarNavItems.map((item) => (
+              {currentNavItems.map((item) => (
                   <Link
                   key={item.href}
                   href={item.href}
@@ -48,11 +58,11 @@ const NavContent = ({ user, pathname }: { user: User, pathname: string }) => (
        <div className="mt-auto border-t p-4">
             <div className='flex items-center gap-3 mb-4'>
                 <Avatar>
-                    <AvatarImage src={user.photoURL || "https://placehold.co/40x40.png"} alt="User" data-ai-hint="woman portrait" />
-                    <AvatarFallback>{user.displayName?.charAt(0) || user.email?.charAt(0)}</AvatarFallback>
+                    <AvatarImage src={user?.avatarUrl || "https://placehold.co/40x40.png"} alt="User" data-ai-hint="woman portrait" />
+                    <AvatarFallback>{user?.name?.charAt(0) || user?.email?.charAt(0)}</AvatarFallback>
                 </Avatar>
                 <div>
-                    <p className='text-sm font-semibold'>{user.displayName || 'Reviewer'}</p>
+                    <p className='text-sm font-semibold'>{user?.name || 'Reviewer'}</p>
                     <p className='text-xs text-muted-foreground'>{user.email}</p>
                 </div>
             </div>
@@ -70,7 +80,8 @@ const NavContent = ({ user, pathname }: { user: User, pathname: string }) => (
             </div>
         </div>
     </>
-);
+  );
+};
 
 
 export default function DashboardLayout({
@@ -83,21 +94,41 @@ export default function DashboardLayout({
   const [user, loading, error] = useAuthState(auth);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [roleLoading, setRoleLoading] = useState(true);
+  const [userInfo, setUserInfo] = useState<AppUser | null>(null);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
-        await ensureUserProfileExists(user);
-        setUserRole('Reviewer'); // Assume reviewer role after ensuring profile exists
-        setRoleLoading(false);
+        const userInfo = await getCurrentUserInfo();
+        if (userInfo) {
+          setUserInfo(userInfo);
+          setUserRole(userInfo.role);
+          if (userInfo.role === 'admin') {
+            router.push('/admin');
+          } else if (userInfo.role === 'uploader') {
+            router.push('/artist-dashboard');
+          } else if (userInfo.role === 'reviewer') {
+            // Reviewers stay on the dashboard
+          } else {
+            // Unknown role, redirect to apply
+            router.push('/apply');
+          }
+          setRoleLoading(false);
+        } else {
+          // User exists in Auth but not in Firestore, redirect to apply
+          console.warn(`User ${user.uid} not found in database. Redirecting to apply.`);
+          router.push('/apply');
+          setRoleLoading(false);
+        }
       } else {
         router.push('/login');
+        setRoleLoading(false);
       }
     });
     return () => unsubscribe();
   }, [router]);
 
-  if (loading || roleLoading) {
+  if (loading || roleLoading || !userInfo) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -113,31 +144,11 @@ export default function DashboardLayout({
     )
   }
 
-  // Show access denied for non-reviewers (but be more permissive in development)
-  if (userRole !== 'Reviewer' && userRole !== null) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
-          <p className="text-muted-foreground mb-4">
-            The reviewer dashboard is only accessible to approved reviewers.
-          </p>
-          <p className="text-sm text-muted-foreground mb-4">
-            Your role: {userRole || 'Not found'}
-          </p>
-          <Button asChild>
-            <Link href="/apply">Apply to Become a Reviewer</Link>
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="grid min-h-screen w-full lg:grid-cols-[280px_1fr]">
       <div className="hidden border-r bg-background lg:block">
         <div className="flex h-full max-h-screen flex-col gap-2 fixed w-[280px]">
-          <NavContent user={user} pathname={pathname} />
+          <NavContent user={userInfo} pathname={pathname} userRole={userRole} />
         </div>
       </div>
       <div className="flex flex-col">
@@ -150,7 +161,7 @@ export default function DashboardLayout({
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="flex flex-col p-0">
-               <NavContent user={user} pathname={pathname} />
+               <NavContent user={userInfo} pathname={pathname} userRole={userRole} />
             </SheetContent>
           </Sheet>
            <div className="flex-1">

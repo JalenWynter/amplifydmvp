@@ -6,7 +6,8 @@ import { Badge, getStatusBadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MoreHorizontal, CreditCard, RefreshCw, Loader2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { getTransactions, Transaction, getReviewers, Reviewer } from '@/lib/firebase/services';
+import { getTransactions, getReviewers } from '@/lib/firebase/services';
+import { Transaction, Reviewer } from '@/lib/types';
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -138,13 +139,13 @@ export default function TransactionsPage() {
                                     <TableCell className="max-w-[250px]">
                                         <div>
                                             <div className="font-medium truncate" title={transaction.artistName}>{transaction.artistName}</div>
-                                            <div className="text-sm text-muted-foreground truncate" title={transaction.contactEmail}>{transaction.contactEmail}</div>
+                                            <div className="text-sm text-muted-foreground truncate" title={transaction.uploaderEmail || 'N/A'}>{transaction.uploaderEmail || 'N/A'}</div>
                                         </div>
                                     </TableCell>
                                     <TableCell className="max-w-[250px]">
                                         <div>
                                             <div className="font-medium truncate" title={transaction.songTitle}>{transaction.songTitle}</div>
-                                            <div className="text-sm text-muted-foreground truncate" title={getReviewerName(transaction.reviewerId)}>{getReviewerName(transaction.reviewerId)}</div>
+                                            <div className="text-sm text-muted-foreground truncate" title={getReviewerName(transaction.reviewerId || 'N/A')}>{getReviewerName(transaction.reviewerId || 'N/A')}</div>
                                         </div>
                                     </TableCell>
                                     <TableCell className="font-mono">{formatAmount(transaction.amount)}</TableCell>

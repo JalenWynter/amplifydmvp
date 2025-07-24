@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -8,6 +7,7 @@ import { Slider } from '../ui/slider';
 import { Textarea } from '../ui/textarea';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { FormField, FormMessage, FormControl } from '../ui/form';
+import { ReviewFormData } from '@/lib/types'; // Import ReviewFormData
 
 const scoringFactors = {
   Composition: [
@@ -42,22 +42,21 @@ const allFactorIds = Object.values(scoringFactors).flat().map(f => f.id);
 const schemaObject = allFactorIds.reduce((acc, id) => {
   acc[id] = z.number().min(0).max(10);
   return acc;
-}, {} as Record<string, any>);
+}, {} as Record<string, z.ZodNumber>);
 
 schemaObject.strengths = z.string().min(50, 'Please provide at least 50 characters on strengths.');
 schemaObject.improvements = z.string().min(50, 'Please provide at least 50 characters on areas for improvement.');
-schemaObject.overallReview = z.string().min(100, 'Please provide at least 100 characters for the overall review.');
+schemaObject.summary = z.string().min(100, 'Please provide at least 100 characters for the overall review.');
 schemaObject.audioFeedbackUrl = z.string().optional();
 schemaObject.videoFeedbackUrl = z.string().optional();
 schemaObject.isDraft = z.boolean().optional();
 
 export const reviewSchema = z.object(schemaObject);
-export type ReviewFormValues = z.infer<typeof reviewSchema>;
 
 
 interface ScoringChartProps {
-    form: ReturnType<typeof useForm<ReviewFormValues>>;
-    scores: Partial<ReviewFormValues>;
+    form: ReturnType<typeof useForm<ReviewFormData>>;
+    scores: Partial<ReviewFormData>;
 }
 
 export default function ScoringChart({ form, scores }: ScoringChartProps) {
@@ -72,7 +71,7 @@ export default function ScoringChart({ form, scores }: ScoringChartProps) {
                         {factors.map(factor => (
                             <FormField
                                 key={factor.id}
-                                name={factor.id as keyof ReviewFormValues}
+                                name={factor.id as keyof ReviewFormData} // Changed from ReviewFormValues
                                 control={form.control}
                                 render={({ field }) => (
                                      <div className="grid gap-3">
@@ -88,7 +87,7 @@ export default function ScoringChart({ form, scores }: ScoringChartProps) {
                                             className="flex-1"
                                         />
                                         <span className="w-10 text-right font-mono text-primary font-semibold">
-                                            {(scores[factor.id as keyof ReviewFormValues] as number ?? 5).toFixed(1)}
+                                            {(scores[factor.id as keyof ReviewFormData] as number ?? 5).toFixed(1)} // Changed from ReviewFormValues
                                         </span>
                                         </div>
                                     </div>
@@ -130,13 +129,13 @@ export default function ScoringChart({ form, scores }: ScoringChartProps) {
             
             <FormField
                 control={form.control}
-                name="overallReview"
+                name="summary"
                 render={({ field }) => (
                      <div className="space-y-2">
-                        <Label htmlFor="overallReview" className="text-lg font-semibold">Overall Review</Label>
+                        <Label htmlFor="summary" className="text-lg font-semibold">Overall Review</Label>
                         <FormControl>
                             <Textarea 
-                                id="overallReview" 
+                                id="summary" 
                                 rows={6} 
                                 placeholder="Provide a comprehensive overall review of this track. Include your thoughts on the production, performance, commercial potential, and any other relevant aspects. This will be the main review text that appears on the artist's review page."
                                 className="mt-2 min-h-[150px] resize-y"

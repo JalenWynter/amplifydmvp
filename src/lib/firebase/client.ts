@@ -1,11 +1,14 @@
+/** @client */
 // This file configures and initializes the client-side Firebase SDK.
 // It reads configuration from environment variables and exports
 // the necessary Firebase services (Auth, Firestore, Storage) for
 // use throughout the application.
 
 import { initializeApp, getApps, getApp, FirebaseOptions } from "firebase/app";
+import type { Functions } from "firebase/functions";
 import { getAuth, connectAuthEmulator } from "firebase/auth";
 import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
+import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
 import { getStorage, connectStorageEmulator } from "firebase/storage";
 import { getAnalytics, isSupported } from "firebase/analytics";
 
@@ -41,6 +44,10 @@ const db = getFirestore(app);
 const storage = getStorage(app);
 const analytics = isSupported().then(yes => yes ? getAnalytics(app) : null);
 
+import type { Functions } from "firebase/functions";
+
+let functions: Functions | null = null; // Declare functions here
+
 // Connect to emulators if in development mode
 if (typeof window !== 'undefined') {
   if (process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST) {
@@ -57,7 +64,30 @@ if (typeof window !== 'undefined') {
     connectStorageEmulator(storage, host, parseInt(port));
     console.log(`Connected to Storage Emulator: http://${process.env.NEXT_PUBLIC_FIREBASE_STORAGE_EMULATOR_HOST}`);
   }
+
+  // Initialize and connect to Functions Emulator only on client side
+  functions = getFunctions(app);
+  if (process.env.NEXT_PUBLIC_FIREBASE_FUNCTIONS_EMULATOR_HOST) {
+    const [host, port] = process.env.NEXT_PUBLIC_FIREBASE_FUNCTIONS_EMULATOR_HOST.split(':');
+    connectFunctionsEmulator(functions, host, parseInt(port));
+    console.log(`Connected to Functions Emulator: http://${host}:${port}`);
+  }
 }
 
-
 export { app, auth, db, storage, analytics };
+
+export function getFirebaseFunctions(): Functions {
+  if (typeof window === 'undefined') {
+    throw new Error("Firebase Functions can only be initialized on the client side.");
+  }
+  // Ensure functions is initialized only once on the client
+  if (!functions) {
+    functions = getFunctions(app);
+    if (process.env.NEXT_PUBLIC_FIREBASE_FUNCTIONS_EMULATOR_HOST) {
+      const [host, port] = process.env.NEXT_PUBLIC_FIREBASE_FUNCTIONS_EMULATOR_HOST.split(':');
+      connectFunctionsEmulator(functions, host, parseInt(port));
+      console.log(`Connected to Functions Emulator: http://${host}:${port}`);
+    }
+  }
+  return functions;
+}

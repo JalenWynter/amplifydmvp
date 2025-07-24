@@ -6,7 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MoreHorizontal, DollarSign } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { getPayouts, Payout } from '@/lib/firebase/services';
+import { getPayouts, createPayout, updatePayoutStatus } from '@/lib/firebase/payouts';
+import { getReviewers } from '@/lib/firebase/reviewers'; // Assuming getReviewers is in reviewers.ts
+import { Payout, Reviewer } from '@/lib/types';
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";

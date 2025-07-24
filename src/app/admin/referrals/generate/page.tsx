@@ -22,6 +22,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { createReferralCode } from "@/lib/firebase/services";
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth } from '@/lib/firebase/client';
 
 const phoneRegex = new RegExp(
   /^([+]?[\s0-9]+)?(\d{3}|[(]?[0-9]+[)])?([-]?[\s]?[0-9])+$/
@@ -42,6 +44,7 @@ const referralCodeSchema = z.object({
 });
 
 export default function GenerateReferralCodePage() {
+    const [user] = useAuthState(auth);
     const { toast } = useToast();
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
@@ -56,7 +59,8 @@ export default function GenerateReferralCodePage() {
     async function onSubmit(values: z.infer<typeof referralCodeSchema>) {
         setIsLoading(true);
         try {
-            const newCode = await createReferralCode(values.associatedUser);
+            if (!user) throw new Error('User not authenticated');
+            const newCode = await createReferralCode(values.associatedUser, user.uid);
             toast({
                 title: "Invite Code Generated!",
                 description: `New single-use code created: ${newCode.code}`,

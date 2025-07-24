@@ -20,7 +20,9 @@ import {
 } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { getApplicationById, approveApplication, Application } from '@/lib/firebase/services';
+import { getApplicationById, rejectApplication } from '@/lib/firebase/services';
+import { approveApplication } from '@/lib/firebase/users';
+import type { Application } from "@/lib/types";
 import { useState, useEffect, use } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -67,19 +69,19 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ ap
     fetchApplication();
   }, [resolvedParams.applicationId]);
 
-  const handleStatusUpdate = async (status: 'Approved' | 'Rejected') => {
+  const handleStatusUpdate = async (status: 'approved' | 'rejected') => {
     if (!application) return;
 
     setIsUpdating(true);
     try {
-        if (status === 'Approved') {
+        if (status === 'approved') {
             await approveApplication(application.id);
             toast({
               title: `Application Approved!`,
               description: `${application.name}'s application has been approved and a reviewer account created.`,
             });
-        } else if (status === 'Rejected') {
-            // TODO: Implement rejection logic here. For now, just show a toast.
+        } else if (status === 'rejected') {
+            await rejectApplication(application.id);
             toast({
               title: `Application Rejected`,
               description: `${application.name}'s application has been rejected.`,
@@ -98,8 +100,8 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ ap
   const getStatusBadgeVariant = () => {
     if (!application) return '';
     switch (application.status) {
-      case 'Approved': return 'bg-green-100 text-green-800';
-      case 'Rejected': return 'bg-red-100 text-red-800';
+      case 'approved': return 'bg-green-100 text-green-800';
+      case 'rejected': return 'bg-red-100 text-red-800';
       default: return 'bg-yellow-100 text-yellow-800';
     }
   };
@@ -166,18 +168,17 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ ap
 
           <div className="space-y-2">
             <h3 className="font-semibold text-lg">Music Background & Experience</h3>
-            <p className="text-muted-foreground whitespace-pre-wrap break-words max-w-full overflow-hidden">{application.musicBackground}</p>
+            <p className="text-muted-foreground whitespace-pre-wrap break-words max-w-full overflow-hidden">{application.musicBackground ? application.musicBackground : 'N/A'}</p>
           </div>
           
           <Separator />
-          
            <div className="space-y-2">
             <h3 className="font-semibold text-lg">Motivation</h3>
             <p className="text-muted-foreground whitespace-pre-wrap break-words max-w-full overflow-hidden">{application.joinReason}</p>
           </div>
 
         </CardContent>
-        {application.status === 'Pending Review' && (
+        {application.status === 'pending' && (
           <div className="p-6 bg-muted/50 border-t flex justify-end gap-2">
               <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -195,7 +196,7 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ ap
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => handleStatusUpdate('Rejected')} className="bg-destructive hover:bg-destructive/90">
+                    <AlertDialogAction onClick={() => handleStatusUpdate('rejected')} className="bg-destructive hover:bg-destructive/90">
                       Confirm Rejection
                     </AlertDialogAction>
                   </AlertDialogFooter>
@@ -217,7 +218,7 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ ap
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => handleStatusUpdate('Approved')} className="bg-green-600 hover:bg-green-700">
+                    <AlertDialogAction onClick={() => handleStatusUpdate('approved')} className="bg-green-600 hover:bg-green-700">
                       Confirm Approval
                     </AlertDialogAction>
                   </AlertDialogFooter>

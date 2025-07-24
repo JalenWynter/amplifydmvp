@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Search as SearchIcon, X } from "lucide-react";
 import { useState } from "react";
-import { User } from "@/lib/firebase/services";
+import { User } from "@/lib/types";
 
 
 export default function SearchUsersPage() {

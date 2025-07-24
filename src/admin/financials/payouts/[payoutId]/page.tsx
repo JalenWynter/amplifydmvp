@@ -8,7 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, CheckCircle, Clock, CreditCard, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { getPayoutById, Payout, updatePayoutStatus } from "@/lib/firebase/services";
+import { getPayoutById, updatePayoutStatus } from "@/lib/firebase/payouts";
+import { Payout } from "@/lib/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState, useEffect, useCallback } from "react";
 import { Skeleton } from "@/components/ui/skeleton";

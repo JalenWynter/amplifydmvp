@@ -1,8 +1,8 @@
 // src/app/admin/users/actions.ts
 'use server';
 
-import { updateUserStatusAdmin } from '@/lib/firebase/admin';
-import { User } from '@/lib/firebase/services';
+import { updateUserStatus } from '@/lib/firebase/admin';
+import { User } from '@/lib/types';
 
 export async function handleUserStatusUpdate(userId: string, status: User['status']) {
   try {

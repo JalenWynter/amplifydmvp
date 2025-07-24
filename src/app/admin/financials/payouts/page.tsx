@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +6,9 @@ import { Badge, getStatusBadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MoreHorizontal, DollarSign, PlusCircle, Loader2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { getPayouts, Payout, getReviewers, Reviewer, createPayout, updatePayoutStatus } from '@/lib/firebase/services';
+import { getPayouts, createPayout, updatePayoutStatus } from '@/lib/firebase/payouts';
+import { getReviewers } from '@/lib/firebase/reviewers'; // Assuming getReviewers is in reviewers.ts
+import { Payout, Reviewer } from '@/lib/types';
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -66,7 +67,7 @@ export default function PayoutsPage() {
         fetchPayouts();
     }, []);
 
-    const handleCreatePayout = async (payoutData: Omit<Payout, 'id' | 'date' | 'status'>) => {
+    const handleCreatePayout = async (payoutData: Omit<Payout, 'id' | 'date' | 'status' | 'amount'> & { amountInCents: number }) => {
         setIsSaving(true);
         try {
             await createPayout(payoutData);

@@ -1,33 +1,85 @@
 rules_version = '2';
-
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow public read access to reviewer avatars
-    match /reviewers/{allPaths=**} {
-      allow read: if true;
-      allow write: if request.auth != null;
+
+    // Helper function for authentication
+    function isAuthenticated() {
+      return request.auth != null;
     }
-    
-    // Allow public read access to review feedback files
-    match /audio-feedback/{allPaths=**} {
-      allow read: if true;
-      allow write: if request.auth != null;
+
+    // Helper function to get the user's role from Firestore (for Storage rules)
+    // Note: Firestore lookups in Storage rules can impact performance for frequent access.
+    function getRole(userId) {
+      return firestore.get(/databases/(default)/documents/users/$(userId)).data.role;
     }
-    
-    match /video-feedback/{allPaths=**} {
-      allow read: if true;
-      allow write: if request.auth != null;
+
+    // Checks if the requesting user has the 'admin' role.
+    function isAdmin() {
+      return isAuthenticated() && getRole(request.auth.uid) == 'admin';
     }
-    
-    match /images/{allPaths=**} {
-      allow read: if true;
-      allow write: if request.auth != null;
+
+    // Checks if the requesting user is the owner of the resource (based on UID matching path segment).
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
     }
-    
-    // Restrict access to submissions - only authenticated users can read
-    match /submissions/{allPaths=**} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+
+    // Checks if the requesting user has the 'reviewer' role.
+    function isReviewer() {
+      return isAuthenticated() && getRole(request.auth.uid) == 'reviewer';
+    }
+
+    // Submissions (music files): Path: /submissions/{userId}/{fileName} where userId is the artist's UID
+    match /submissions/{userId}/{fileName} {
+      // Write: Allow if authenticated and the path matches the user's UID.
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+
+      // Read: Allow public read access for debugging.
+      allow read: if true;
+    }
+
+    // --- Temporary Anonymous Music Uploads (via Signed URL) ---
+    // Path: /music-uploads/temp/{trackingToken}/{fileName}
+    // This is the temporary location for anonymous users uploading files via a pre-signed URL.
+    match /music-uploads/temp/{trackingToken}/{fileName} {
+      // Allow write only if the request includes specific metadata set by the signed URL.
+      // The Cloud Function generating the signed URL will add 'x-goog-meta-signed-url': 'true'.
+      allow write: if request.resource.metadata.signedUrl == 'true';
+      allow read: if false; // These are temporary files, not directly readable by clients.
+    }
+
+    // --- Profile Pictures ---
+    // Path: /profile-pictures/{userId}/{fileName}
+    match /profile-pictures/{userId}/{fileName} {
+      allow read: if true; // Profile pictures are generally public
+      // Only the owner (authenticated user) can upload/update their own profile picture.
+      // Admins can write all.
+      allow write: if isOwner(userId) || isAdmin();
+    }
+
+    // --- Other Publicly Readable/Role-Restricted Paths (NEWLY INTRODUCED/CLARIFIED) ---
+    // `reviewers` related files (e.g., reviewer avatars if stored separately from profile-pictures)
+    // Note: If profile pictures are already handled by /profile-pictures, this might be redundant.
+    match /reviewers/{reviewerId}/{fileName} {
+      allow read: if true; // Publicly readable
+      allow write: if isReviewer() && request.auth.uid == reviewerId || isAdmin(); // Reviewer can write their own, admin all
+    }
+
+    // `audio-feedback` (e.g., if reviewers upload audio feedback as a review component)
+    match /audio-feedback/{reviewerId}/{submissionId}/{fileName} {
+      // Only reviewer assigned to path/submission can read/write their own. Admins full control.
+      allow read, write: if isReviewer() && request.auth.uid == reviewerId || isAdmin();
+    }
+
+    // `video-feedback` (e.g., if reviewers upload video feedback as a review component)
+    match /video-feedback/{reviewerId}/{submissionId}/{fileName} {
+      // Only reviewer assigned to path/submission can read/write their own. Admins full control.
+      allow read, write: if isReviewer() && request.auth.uid == reviewerId || isAdmin();
+    }
+
+    // `images` (general images, e.g., for blog posts, marketing materials, etc.)
+    match /images/{imageId}/{fileName} {
+      allow read: if true; // Publicly readable
+      allow write: if isAuthenticated(); // Any authenticated user can upload general images. Admins full control.
     }
   }
-} 
+}

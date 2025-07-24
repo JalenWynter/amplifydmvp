@@ -62,7 +62,7 @@ Write-Host "🎉 Production Deployment Summary:" -ForegroundColor Green
 Write-Host "- Firestore rules: ✅ Deployed" -ForegroundColor Green
 Write-Host "- Storage rules: ✅ Deployed" -ForegroundColor Green
 Write-Host "- Indexes: ✅ Deployed" -ForegroundColor Green
-Write-Host "- Next.js app: ✅ Built & Deployed" -ForegroundColor Green
+Write-Host '- Next.js app: ✅ Built & Deployed' -ForegroundColor Green
 Write-Host "- Development rules: ✅ Restored" -ForegroundColor Green
 Write-Host "==================================" -ForegroundColor Green
 

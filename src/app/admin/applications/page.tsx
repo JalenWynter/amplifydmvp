@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { MoreHorizontal, FileText, Loader2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { getApplications, Application } from '@/lib/firebase/services';
+import { getApplications } from '@/lib/firebase/services';
+import { Application } from '@/lib/types';
 import { useState, useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -124,7 +125,7 @@ export default function ReviewerApplicationsPage() {
                             <DropdownMenuItem asChild>
                             <Link href={`/admin/applications/${app.id}`}>View Application</Link>
                             </DropdownMenuItem>
-                            {app.status === 'Pending Review' && (
+                            {app.status === 'pending' && (
                             <>
                                 <DropdownMenuItem onClick={() => handleStatusUpdate(app, 'Approved')}>Approve</DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleStatusUpdate(app, 'Rejected')} className="text-destructive focus:text-destructive">Reject</DropdownMenuItem>

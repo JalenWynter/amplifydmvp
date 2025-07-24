@@ -60,6 +60,10 @@ temp_service_account.json
 .modified
 commit_message.txt
 
+# Firebase Service Account Keys (SECURITY: Never commit these!)
+scripts/serviceAccountKey.json
+*.serviceAccountKey.json
+
 # Debug files
 firebase-debug.log
 firestore-debug.log

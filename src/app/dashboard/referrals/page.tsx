@@ -8,7 +8,7 @@ import Link from "next/link";
 import { PlusCircle, Users, Loader2, CheckCircle, Clock, X, DollarSign, TrendingUp, UserCheck, Star, Trophy, Gift, Copy, Key } from "lucide-react";
 import { useState, useEffect } from "react";
 import { formatDistanceToNow } from 'date-fns';
-import { getReferralCodes, ReferralCode, getReferralStats, ReferralStats, getReferralEarnings, ReferralEarning, getUserReferralHistory } from "@/lib/firebase/services";
+import { getReferralCodes, getReferralStats, getReferralEarnings, getUserReferralHistory } from "@/lib/firebase/services";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '@/lib/firebase/client';
@@ -17,6 +17,7 @@ import { useSearchParams } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { ChevronDown, Code } from "lucide-react";
+import type { ReferralCode, User, ReferralStats, ReferralEarning } from "@/lib/types";
 
 function CodeRowSkeleton() {
     return (
@@ -58,7 +59,11 @@ export default function ReviewerReferralsPage() {
     const [referralCodes, setReferralCodes] = useState<ReferralCode[]>([]);
     const [referralStats, setReferralStats] = useState<ReferralStats | null>(null);
     const [referralEarnings, setReferralEarnings] = useState<ReferralEarning[]>([]);
-    const [referralHistory, setReferralHistory] = useState<{ myReferralInfo: { referredBy: User | null; referralCode: ReferralCode | null; joinedAt: string; }; myGeneratedCodes: ReferralCode[]; myReferrals: User[]; } | null>(null);
+    const [referralHistory, setReferralHistory] = useState<{
+        myReferralInfo: { referredBy: User | null; referralCode: ReferralCode | null; joinedAt: string; };
+        myGeneratedCodes: ReferralCode[];
+        myReferrals: User[];
+    } | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [_, setNow] = useState(new Date()); // Used to force re-renders for timeago
 
@@ -84,7 +89,12 @@ export default function ReviewerReferralsPage() {
                 setReferralCodes(myReferralCodes);
                 setReferralStats(stats);
                 setReferralEarnings(earnings);
-                setReferralHistory(history);
+                // Transform history to match expected structure
+                setReferralHistory({
+                    myReferralInfo: history.myReferralInfo || { referredBy: null, referralCode: null, joinedAt: '' },
+                    myGeneratedCodes: history.referralCodes || [],
+                    myReferrals: history.referralEarnings || []
+                });
             } catch (error) {
                 console.error("Error fetching referral data:", error);
             } finally {
@@ -298,7 +308,7 @@ export default function ReviewerReferralsPage() {
             )}
 
             {/* Complete Referral History */}
-            {referralHistory?.myGeneratedCodes?.length > 0 && (
+            {(referralHistory?.myGeneratedCodes?.length ?? 0) > 0 && (
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
@@ -306,12 +316,12 @@ export default function ReviewerReferralsPage() {
                             Complete Code History
                         </CardTitle>
                         <CardDescription>
-                            All referral codes you've ever generated (showing all {referralHistory?.myGeneratedCodes?.length || 0} codes)
+                            All referral codes you've ever generated (showing all {(referralHistory?.myGeneratedCodes?.length ?? 0) || 0} codes)
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-2">
-                            {referralHistory?.myGeneratedCodes?.map((code: ReferralCode) => (
+                            {(referralHistory?.myGeneratedCodes ?? []).map((code: ReferralCode) => (
                                 <div key={code.id} className="flex items-center justify-between p-3 border rounded-lg">
                                     <div className="flex items-center gap-3">
                                         <span className="font-mono font-medium">{code.code}</span>
@@ -334,9 +344,7 @@ export default function ReviewerReferralsPage() {
                         </div>
                         <div className="mt-4 p-3 bg-gray-50 rounded-lg">
                             <p className="text-sm text-muted-foreground">
-                                📊 <strong>Total Stats:</strong> {referralHistory?.myGeneratedCodes?.length || 0} codes generated, {&apos; &apos;}
-                                {referralHistory?.myGeneratedCodes?.filter((c: ReferralCode) => c.status === 'Used').length || 0} used, {&apos; &apos;}
-                                {referralHistory?.myReferrals?.length || 0} people referred
+                                📊 <strong>Total Stats:</strong> {(referralHistory?.myGeneratedCodes?.length ?? 0) || 0} codes generated, {(referralHistory?.myGeneratedCodes?.filter((c: ReferralCode) => c.status === 'Used').length ?? 0)} used, {(referralHistory?.myReferrals?.length ?? 0)} people referred
                             </p>
                         </div>
                     </CardContent>

@@ -48,8 +48,8 @@ export default function ContactPage() {
         </CardHeader>
         <CardContent className="text-center">
             <Button asChild size="lg" className="bg-accent hover:bg-accent/90">
-                <a href="mailto:support@amplifyd.com">
-                    support@amplifyd.com
+                <a href="mailto:mymusicreview@gmail.com">
+                mymusicreview@gmail.com
                 </a>
             </Button>
             <p className="text-xs text-muted-foreground mt-3">We aim to respond to all inquiries within 24 hours.</p>

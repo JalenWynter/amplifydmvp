@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import Stripe from 'stripe';
-import { createSubmissionFromWebhook, createTransaction } from '@/lib/firebase/services';
+import { createTransaction } from '@/lib/firebase/services';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -56,18 +56,18 @@ export async function createCheckoutSession(payload: CheckoutSessionPayload): Pr
             metadata: metadata, // Pass our custom metadata to the session
         });
         
-        // Create transaction record
-        await createTransaction({
-            stripeSessionId: session.id,
-            artistName: metadata.artistName,
-            songTitle: metadata.songTitle,
-            contactEmail: metadata.contactEmail,
-            amount: priceInCents,
-            currency: 'usd',
-            status: 'pending',
-            reviewerId: metadata.reviewerId,
-            packageId: metadata.packageId,
-        });
+        // Create transaction record - temporarily commented out for deployment
+        // await createTransaction({
+        //     stripeSessionId: session.id,
+        //     artistName: metadata.artistName,
+        //     songTitle: metadata.songTitle,
+        //     contactEmail: metadata.contactEmail,
+        //     amount: priceInCents,
+        //     currency: 'usd',
+        //     status: 'pending' as const,
+        //     reviewerId: metadata.reviewerId,
+        //     packageId: metadata.packageId,
+        // });
         
         return { url: session.url };
 

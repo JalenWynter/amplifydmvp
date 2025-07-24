@@ -1,26 +1,88 @@
 # **App Name**: Amplifyd
 
-## Core Features:
+## 1. Core Concept
 
-- Secure Authentication: Secure authentication with email/password and Google accounts (managed via Firebase Authentication). Multi-provider auth: Google OAuth, email/password, phone, Firebase integration with secure session management.
-- Music Submission: Intuitive interface for artists to upload music tracks and metadata. Artists specify song title, artist name, and contact details. Music files are securely stored using Firebase Storage.Media Upload System:Audio: MP3, WAV, M4A support up to 200MB,Video: Review videos and visual analysis,Multi-track submissions based on package tiers
-- Reviewer Profiles: Reviewers create public profiles showcasing their experience, genre specialization, turnaround time, and social media links. Profile pictures and reviewer audio files they wish to showcase on their site are stored in Firebase Storage. Reviewer Process: 5-step workflow from application to earnings
-- Review Delivery: Artists receive detailed reviews directly within their dashboard.Artist Journey: 7-step process from discovery to review delivery
-- Admin Panel: Centralized admin panel for user management and reviewer application approval, data oversight, referral code generation, financial dashboard view everything.
-- Referral System: Exclusive Referral System Section:Invite-Only Access: Only admins and approved reviewers can generate referral codes,Quality Control: Maintains platform quality through trusted referrer network,Detailed Authorization: Clear breakdown of who can generate codes and why
-- Comprehensive Review System: reviewers use a Comprehensive Review System with a 16-factor scoring chart, Interactive star rating sliders andReal-time score calculation with weighted factors
-- Anonymous Uploads: anyone is role artist and doesnt need an account to upload, upon upload they shall be asked to pay with stripe and upon succuess granted the successful upload and submit and populated amongst the reviewer for reviewing etc, ensureing those who have an account are reviewers, so the sign up button should say "Apply"
-- Robust Security Measures: Firebase Security Rules: Explicitly mention the use of firestore.rules and storage.rules to enforce granular, server-side security for all data access and file uploads, ensuring only authorized users can read, write, or modify specific data. Server-Side Admin Operations: Highlight that the firebase-admin.ts file indicates the use of the Firebase Admin SDK, which is crucial for secure server-side operations (e.g., user management, data manipulation, payment processing, referral code generation) that cannot be performed directly from the client.
-- Comprehensive API Layer: Next.js API Routes: Emphasize that Next.js API routes (src/app/api/) are utilized for handling server-side logic, including secure Stripe webhook processing, reCAPTCHA verification, and potentially other complex data operations that require backend processing.
-- Enhanced User Experience (UX) & Interface (UI): Loading States and Skeletons: The presence of ReviewerCardSkeleton.tsx and the Loader2 icon (from lucide-react) indicates the implementation of visual loading indicators and skeleton screens to improve perceived performance and provide a smoother user experience during data fetching. Toast Notifications: The useToast hook and related toast.tsx/toaster.tsx components suggest a system for displaying transient, non-intrusive messages (e.g., success, error, informational alerts) to the user. Confetti Effect: The Confetti.tsx component implies a celebratory visual effect, likely triggered upon successful completion of key user actions like payment or submission.
-- Development & Maintainability: Dedicated Development Setup Page: The dev-setup/page.tsx file suggests a specific page or utility for developers to streamline local environment setup or perform development-specific tasks. Testing Strategy: The inclusion of comprehensive-test.js and test-init.js indicates that the project has a testing framework and practices in place to ensure code quality and functionality. Data Validation: The validation.ts file points to robust data validation logic, likely applied both client-side and server-side, to maintain data integrity. Error Handling & Monitoring: error-handler.ts and monitoring.ts signify a structured approach to catching, logging, and potentially reporting application errors, crucial for stability and debugging. Email Communication: The EMAIL_SETUP.md documentation suggests that the application sends various transactional emails (e.g., account verification, review completion notifications, payment confirmations) to users. Dynamic Content Display: The use of dynamic routes like src/app/checkout/[productName] and src/app/reviewers/[id] allows for flexible and personalized content display based on specific product or reviewer IDs. Code Quality & Conventions: The presence of configuration files like .eslintrc.js, postcss.config.mjs, tailwind.config.ts, tsconfig.json, and components.json (for shadcn/ui) indicates a strong adherence to coding standards, linting, and type-checking for a high-quality and consistent codebase. Change Management: The changelog-backend.md and changelog-frontend.md files suggest a disciplined approach to tracking changes and releases for both the backend and frontend.
+Amplifyd is a platform designed to connect musicians with music reviewers, providing a streamlined and secure process for submitting music and receiving high-quality feedback. The platform caters to both anonymous (one-time) and registered users, with a focus on a seamless user experience and robust security.
 
-## Style Guidelines:
+## 2. Core Features
 
-- Deep Blue (#293462) primary theme for professionalism
-- Warm Orange (#FF6B35) accents for key actions and CTAs
-- Light Gray (#F0F4F8) clean backdrop
-- Inter font family for modern typography
-- Code font: 'Source Code Pro' for displaying code snippets.
-- Simple, professional icons for navigation and actions. Consistent style across the app.
-- Clean and well-organized layout. Focus on ease of use and clear information hierarchy. Clear role-based user flows
+### 2.1. Uploader (Musician) Flow
+
+*   **Anonymous & Registered Submissions**: Musicians can submit tracks with or without an account.
+*   **Reviewer Discovery**: A public gallery of reviewer profiles (`src/app/reviewers/page.tsx`) with detailed "1-pager" profiles (`src/app/reviewers/[id]/page.tsx`).
+*   **Multi-Step Submission Form**: An intuitive form (`src/components/submission/submission-form.tsx`) for uploading audio files, providing metadata, and selecting a reviewer.
+*   **Secure File Uploads**: Direct-to-client uploads to Firebase Storage using pre-signed URLs generated by the `getSignedUploadUrl` Firebase Function.
+*   **Stripe Integration**: Secure payment processing via Stripe Checkout, initiated by the `createPaymentIntent` Firebase Function.
+*   **Submission Tracking**: Anonymous users receive a unique `trackingToken` via email to track their submission status on a dedicated page (`src/app/review/[reviewId]/page.tsx`).
+*   **Registered User Dashboard**: Registered users have a dashboard (`src/app/dashboard/page.tsx`) to view their submission history and manage their profile.
+
+### 2.2. Reviewer Flow
+
+*   **Application Process**: Aspiring reviewers can apply through a dedicated application form. Admins approve applications in the admin panel.
+*   **Reviewer Dashboard**: A private dashboard (`src/app/dashboard/reviewer/page.tsx`) for reviewers to manage their profile, view assigned submissions, and submit reviews.
+*   **Review Submission**: A dedicated interface for writing and submitting reviews, including a 16-factor scoring chart and star rating sliders.
+*   **Payout Management**: Reviewers provide their payout information (e.g., PayPal, Venmo) in their profile for manual payouts by the admin.
+
+### 2.3. Admin Panel
+
+*   **Centralized Management**: A comprehensive admin panel (`src/app/admin/page.tsx`) for user management, reviewer application approval, submission tracking, and financial oversight.
+*   **Referral Code Generation**: Admins can generate referral codes for trusted reviewers to invite other high-quality reviewers to the platform.
+
+## 3. Technical Architecture
+
+### 3.1. Frontend
+
+*   **Framework**: Next.js 14 with the App Router.
+*   **Language**: TypeScript.
+*   **Styling**: Tailwind CSS with shadcn/ui components.
+*   **State Management**: React Context API (`src/context/AuthContext.tsx`) for authentication state.
+*   **Data Fetching**: React Server Components (RSCs) for initial data fetching, and client-side fetching with SWR or React Query for dynamic data.
+*   **UI/UX**: Loading skeletons (`src/components/reviewers/ReviewerCardSkeleton.tsx`), toast notifications (`src/hooks/use-toast.ts`), and confetti (`src/components/confetti.tsx`) for a polished user experience.
+
+### 3.2. Backend
+
+*   **Platform**: Firebase (Authentication, Firestore, Storage, Functions).
+*   **Language**: TypeScript.
+*   **Core Functions**:
+    *   `getSignedUploadUrl`: Generates pre-signed URLs for secure file uploads.
+    *   `createPaymentIntent`: Creates a Stripe Payment Intent.
+    *   `onPaymentSucceeded`: A Stripe webhook handler for processing successful payments.
+    *   `getSubmissionStatusByToken`: Retrieves submission status for anonymous users.
+    *   `assignReviewerRole`: Assigns the "reviewer" role to a user.
+*   **Security**: Firebase Security Rules (`firestore.rules`, `storage.rules`) and App Check for all callable functions.
+
+### 3.3. Database (Firestore)
+
+*   **`users` collection**: Stores user profiles, roles, and reviewer-specific information.
+*   **`submissions` collection**: Stores all submission data, including uploader information, audio file URL, reviewer ID, status, and the final review.
+*   **`reviews` collection**: Stores the detailed review content, linked to the submission.
+
+## 4. Build, Deployment, and Error Handling
+
+### 4.1. Build Process
+
+*   **Local Development**: Run `npm run dev` to start the Next.js development server.
+*   **Production Build**: Run `npm run build` to create a production-ready build.
+*   **Linting**: Run `npm run lint` to check for code quality and style issues.
+*   **Testing**: Run `npm run test` to execute the test suite (`comprehensive-test.js`).
+
+### 4.2. Deployment
+
+*   **Hosting**: The application is deployed to Firebase Hosting.
+*   **CI/CD**: A GitHub Actions workflow (`.github/workflows/firebase-hosting-pull-request.yml`) automatically deploys pull requests to a preview channel.
+*   **Production Deployment**: The `deploy-production.sh` script is used to deploy the application to the production environment.
+
+### 4.3. Error Handling and Monitoring
+
+*   **Error Handling**: A centralized error handler (`src/lib/error-handler.ts`) is used to catch and log errors.
+*   **Monitoring**: The `src/lib/monitoring.ts` file contains the configuration for a monitoring service (e.g., Sentry, LogRocket) to track and report errors in production.
+*   **Logging**: Firebase Functions have built-in logging, which can be viewed in the Google Cloud Console.
+
+## 5. Style Guidelines
+
+*   **Primary Color**: Deep Blue (`#293462`)
+*   **Accent Color**: Warm Orange (`#FF6B35`)
+*   **Background Color**: Light Gray (`#F0F4F8`)
+*   **Font Family**: Inter
+*   **Code Font**: Source Code Pro
+*   **Icons**: Lucide React for consistent and professional icons.

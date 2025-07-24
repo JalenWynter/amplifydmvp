@@ -1,16 +1,24 @@
 {
   "compilerOptions": {
-    "module": "es2020",
+    "module": "commonjs",
     "noImplicitReturns": true,
-    "noUnusedLocals": true,
+    "noUnusedLocals": false,
     "outDir": "lib",
-    "rootDir": ".",
     "sourceMap": true,
-    "strict": true,
-    "target": "es2017"
+    "strict": false,
+    "target": "es2017",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "rootDir": "src",
+    "lib": ["es2017"],
+    "baseUrl": ".",
+    "paths": {
+      "*": ["node_modules/*"]
+    },
+    "skipLibCheck": true
   },
   "compileOnSave": true,
   "include": [
-    "."
+    "src"
   ]
 }

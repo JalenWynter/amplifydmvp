@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { MoreHorizontal, UserPlus, Users, Loader2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { getUsers, User } from '@/lib/firebase/services';
+import { getUsers, updateUserRole, updateUserStatus } from '@/lib/firebase/admin/users';
+import { User, UserSchema } from '@/lib/types';
 import { useState, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,7 +23,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { handleUserStatusUpdate } from "./actions";
 
 
 function UserRowSkeleton() {
@@ -87,9 +86,9 @@ export default function ViewUsersPage() {
         fetchUsers();
     }, []);
 
-    const onStatusUpdate = async (user: User, status: 'Active' | 'Suspended') => {
+    const onStatusUpdate = async (user: User, status: 'active' | 'suspended') => {
         setUpdatingId(user.id);
-        const result = await handleUserStatusUpdate(user.id, status);
+        const result = await updateUserStatus(user.id, status);
         setUpdatingId(null);
         setDialogUser(null);
         setDialogAction(null);
@@ -97,7 +96,23 @@ export default function ViewUsersPage() {
         if (result.success) {
             toast({
                 title: 'User Updated',
-                description: `${user.name} has been ${status === 'Active' ? 'reactivated' : 'suspended'}.`,
+                description: `${user.name} has been ${status === 'active' ? 'reactivated' : 'suspended'}.`,
+            });
+            await fetchUsers();
+        } else {
+            toast({ title: "Update Failed", description: result.error, variant: "destructive" });
+        }
+    }
+
+    const onRoleUpdate = async (user: User, newRole: UserRole) => {
+        setUpdatingId(user.id);
+        const result = await updateUserRole(user.id, newRole);
+        setUpdatingId(null);
+
+        if (result.success) {
+            toast({
+                title: 'User Role Updated',
+                description: `${user.name}'s role has been changed to ${newRole}.`,
             });
             await fetchUsers();
         } else {
@@ -113,9 +128,9 @@ export default function ViewUsersPage() {
 
     const getRoleBadgeVariant = (role: string) => {
         switch (role) {
-            case 'Admin': return 'bg-primary/20 text-primary';
-            case 'Reviewer': return 'bg-blue-100 text-blue-800';
-            case 'Artist': return 'bg-purple-100 text-purple-800';
+            case 'admin': return 'bg-primary/20 text-primary';
+            case 'reviewer': return 'bg-blue-100 text-blue-800';
+            case 'uploader': return 'bg-purple-100 text-purple-800';
             default: return 'bg-muted text-muted-foreground';
         }
     }
@@ -138,7 +153,7 @@ export default function ViewUsersPage() {
                     <AlertDialogAction 
                         onClick={() => {
                             if (dialogUser) {
-                                onStatusUpdate(dialogUser, dialogAction === 'Suspend' ? 'Suspended' : 'Active');
+                                onStatusUpdate(dialogUser, dialogAction === 'Suspend' ? 'suspended' : 'active');
                             }
                         }}
                         className={dialogAction === 'Suspend' ? "bg-destructive hover:bg-destructive/90" : ""}
@@ -194,7 +209,22 @@ export default function ViewUsersPage() {
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <Badge variant="secondary" className={getRoleBadgeVariant(user.role)}>{user.role}</Badge>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Badge variant="secondary" className={getRoleBadgeVariant(user.role)}>{user.role}</Badge>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="start">
+                                                {Object.values(UserSchema.shape.role.enum).map(role => (
+                                                    <DropdownMenuItem 
+                                                        key={String(role)} 
+                                                        onClick={() => onRoleUpdate(user, role as 'admin' | 'reviewer' | 'uploader')} 
+                                                        disabled={user.role === role || updatingId === user.id}
+                                                    >
+                                                        {String(role)}
+                                                    </DropdownMenuItem>
+                                                ))}
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
                                     </TableCell>
                                     <TableCell>
                                         <Badge variant="secondary" className={getStatusBadgeVariant(user.status)}>{user.status}</Badge>
@@ -215,7 +245,7 @@ export default function ViewUsersPage() {
                                                     <DropdownMenuItem disabled>View Profile</DropdownMenuItem>
                                                     <DropdownMenuItem disabled>Edit User</DropdownMenuItem>
                                                     <DropdownMenuSeparator />
-                                                    {user.status === 'Active' ? (
+                                                    {user.status === 'active' ? (
                                                         <DropdownMenuItem onClick={() => openConfirmationDialog(user, 'Suspend')} className="text-destructive focus:text-destructive">
                                                             Suspend User
                                                         </DropdownMenuItem>

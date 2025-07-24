@@ -1,118 +1,113 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // REVIEWS COLLECTION - PUBLIC READ ACCESS
-    match /reviews/{reviewId} {
-      // Allow public read access to reviews
-      allow read: if true;
-      
-      // Only authenticated reviewers can create reviews
-      allow create: if request.auth != null 
-        && request.auth.uid == resource.data.reviewerId;
-      
-      // Only the reviewer who created it can update
-      allow update: if request.auth != null 
-        && request.auth.uid == resource.data.reviewerId;
-      
-      // No delete access (reviews are permanent)
-      allow delete: if false;
-    }
-    
-    // REVIEWERS COLLECTION - PUBLIC READ ACCESS
-    match /reviewers/{reviewerId} {
-      // Allow public read access to reviewer profiles
-      allow read: if true;
-      
-      // Only the reviewer can update their own profile
-      allow write: if request.auth != null 
-        && request.auth.uid == reviewerId;
-    }
-    
-    // SUBMISSIONS COLLECTION - RESTRICTED ACCESS
-    match /submissions/{submissionId} {
-      // Only reviewers can read assigned submissions
-      allow read: if request.auth != null 
-        && request.auth.uid == resource.data.reviewerId;
-      
-      // Only system can create submissions (via server-side functions)
-      allow create: if false;
-      
-      // Only assigned reviewer can update status
-      allow update: if request.auth != null 
-        && request.auth.uid == resource.data.reviewerId
-        && request.resource.data.diff(resource.data).affectedKeys()
-           .hasOnly(['status']);
-      
-      allow delete: if false;
-    }
-    
-    // USERS COLLECTION - RESTRICTED ACCESS
-    match /users/{userId} {
-      // Users can only read their own data
-      allow read: if request.auth != null 
-        && request.auth.uid == userId;
-      
-      // Users can only update their own data
-      allow update: if request.auth != null 
-        && request.auth.uid == userId;
-      
-      // No public creation or deletion
-      allow create: if request.auth != null && request.auth.uid == userId;
-      allow delete: if false;
-    }
-    
-    // APPLICATIONS COLLECTION - ADMIN ONLY
-    match /applications/{applicationId} {
-      // Only admins can access applications
-      allow read, write: if request.auth != null 
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin';
-    }
-    
-    // TRANSACTIONS COLLECTION - ADMIN ONLY
-    match /transactions/{transactionId} {
-      // Only admins can access transaction data
-      allow read, write: if request.auth != null 
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin';
-    }
-    
-    // PAYOUTS COLLECTION - ADMIN ONLY
-    match /payouts/{payoutId} {
-      // Only admins can access payout data
-      allow read, write: if request.auth != null 
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin';
-    }
-    
-    // REFERRAL CODES COLLECTION - ADMIN AND REVIEWER ACCESS
-    match /referralCodes/{codeId} {
-      // Admins and Reviewers can access referral codes
-      allow read, write: if request.auth != null 
-        && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin' ||
-            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Reviewer');
+
+    // Helper functions for roles and authentication
+    function isAuthenticated() {
+      return request.auth != null;
     }
 
-    // REFERRAL EARNINGS COLLECTION - REFERRER AND ADMIN ACCESS
-    match /referralEarnings/{earningId} {
-      // Referrers can read their own earnings, system can create, admins can access all
-      allow read: if request.auth != null 
-        && (resource.data.referrerId == request.auth.uid ||
-            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin');
-      
-      // Only system can create referral earnings
-      allow create: if request.auth != null;
-      
-      // Only admins can update earnings (for payout processing)
-      allow update: if request.auth != null 
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin';
-      
-      // No deletion of earnings
-      allow delete: if false;
+    function isAdmin() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
-    
-    // DENY ALL OTHER ACCESS
-    match /{document=**} {
-      allow read, write: if false;
+
+    function isReviewer() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'reviewer';
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Users Collection: Stores all registered users (Admins, Reviewers, Artists).
+    match /users/{userId} {
+      // Read: User can read their own profile. Admins can read all.
+      allow read: if isOwner(userId) || isAdmin();
+      // Create: Allow any authenticated user to create their own user profile on signup.
+      allow create: if isAuthenticated();
+      // Update: User can update their own profile. Admins can update all.
+      allow update: if isOwner(userId) || isAdmin();
+      // Delete: Admin only.
+      allow delete: if isAdmin();
+    }
+
+    // Reviewers Collection: Public profiles for verified reviewers.
+    match /reviewers/{reviewerId} {
+      // Read: Public read access.
+      allow read: if true;
+      // Create: Reviewers can create their own profile (after application approval). Admins too.
+      allow create: if isReviewer() || isAdmin();
+      // Update: Reviewers can update their own profile. Admins too.
+      allow update: if isOwner(reviewerId) || isAdmin();
+      // Delete: Admin only.
+      allow delete: if isAdmin();
+    }
+
+    // Applications Collection: Stores applications from users wanting to become reviewers.
+    match /applications/{applicationId} {
+      // Read: Admin can read all. User can read their own application status.
+      allow read: if isAdmin() || isOwner(resource.data.userId);
+      // Create: Any authenticated user can apply.
+      allow create: if isAuthenticated();
+      // Update: Only admin can update application status.
+      allow update: if isAdmin();
+      // Delete: Admin only.
+      allow delete: if isAdmin();
+    }
+
+    // Submissions Collection: Tracks every music submission from artists.
+    match /submissions/{submissionId} {
+      // Read: Admin can read all. Artist can read their own submissions. Assigned reviewer can read submissions assigned to them.
+      allow read: if isAdmin() || isOwner(resource.data.artistId) || (isReviewer() && request.auth.uid == resource.data.reviewerId);
+      // Create: Handled by Stripe webhook (service account), so no explicit client-side rule needed here.
+      // Update: Assigned reviewer can update status (e.g., "Reviewed"). Admin can update all.
+      allow update: if isAdmin() || (isReviewer() && request.auth.uid == resource.data.reviewerId);
+      // Delete: Admin only.
+      allow delete: if isAdmin();
+    }
+
+    // Reviews Collection: Stores the detailed feedback provided by reviewers.
+    match /reviews/{reviewId} {
+      // Read: Public read access.
+      allow read: if true;
+      // Create: Reviewer creates their own review. Admin too.
+      allow create: if isAdmin() || (isReviewer() && request.resource.data.reviewerId == request.auth.uid);
+      // Update: Reviewer can update their own review. Admin too.
+      allow update: if isAdmin() || (isReviewer() && request.auth.uid == resource.data.reviewerId);
+      // Delete: Admin only.
+      allow delete: if isAdmin();
+    }
+
+    // Payouts Collection: Records of payments made to reviewers.
+    match /payouts/{payoutId} {
+      // Read: Admin only. Reviewer can read their own payouts.
+      allow read: if isAdmin() || (isReviewer() && request.auth.uid == resource.data.reviewerId);
+      // Create: Admin only.
+      allow create: if isAdmin();
+      // Update: Admin only.
+      allow update: if isAdmin();
+      // Delete: Admin only.
+      allow delete: if isAdmin();
+    }
+
+    // ReferralCodes Collection: Single-use codes for tracking reviewer recruitment.
+    match /referralCodes/{codeId} {
+      // Read: Admin can read all. User can read their own codes.
+      allow read: if isAdmin() || isOwner(resource.data.userId);
+      // Create: Admin only.
+      allow create: if isAdmin();
+      // Update: Admin only.
+      allow update: if isAdmin();
+      // Delete: Admin only.
+      allow delete: if isAdmin();
+    }
+
+    // AppSettings Collection: General application settings.
+    match /settings/{settingId} {
+      // Read: Public read access for all users.
+      allow read: if true;
+      // Write: Admin only.
+      allow write: if isAdmin();
     }
   }
 }

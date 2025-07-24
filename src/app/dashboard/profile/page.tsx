@@ -1,10 +1,10 @@
-
-'use client'
+'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Edit, Trash2, Mic, Film, FileText, BarChart3, Package, Loader2, Save } from "lucide-react";
-import { Reviewer, ReviewPackage, getReviewerById, addPackage, updatePackage, deletePackage, updateReviewerProfile, getCurrentUserInfo } from "@/lib/firebase/services";
+import { Reviewer, ReviewPackage, getReviewerById, addPackage, updatePackage, deletePackage } from "@/lib/firebase/reviewers";
+import { getCurrentUserInfo } from "@/lib/firebase/users";
 import React, { useState, useEffect, useCallback } from "react";
 import {
   AlertDialog,
@@ -18,7 +18,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import PackageForm from "./package-form";
-import { auth } from "@/lib/firebase/client";
+import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -35,6 +35,7 @@ const profileSchema = z.object({
     turnaround: z.string().min(3, "Turnaround time is required."),
     experience: z.string().min(50, "Experience description must be at least 50 characters long."),
     genres: z.string().min(1, "Please list at least one genre, separated by commas."),
+    manualPaymentInfo: z.string().optional(),
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
@@ -111,22 +112,23 @@ function ProfileForm({ reviewer, onProfileUpdate }: { reviewer: Reviewer | null,
     const [isSaving, setIsSaving] = useState(false);
     const { toast } = useToast();
 
+    const form = useForm<ProfileFormValues>({
+        resolver: zodResolver(profileSchema),
+        defaultValues: {
+            name: reviewer?.name || "",
+            turnaround: reviewer?.turnaround || "",
+            experience: reviewer?.experience || "",
+            genres: reviewer?.genres?.join(', ') || "",
+            manualPaymentInfo: reviewer?.manualPaymentInfo || "",
+        },
+    });
+
     if (!reviewer) {
         return <div>Loading profile...</div>;
     }
 
-    const form = useForm<ProfileFormValues>({
-        resolver: zodResolver(profileSchema),
-        defaultValues: {
-            name: reviewer.name || "",
-            turnaround: reviewer.turnaround || "",
-            experience: reviewer.experience || "",
-            genres: reviewer.genres?.join(', ') || "",
-        },
-    });
-
     async function onSubmit(values: ProfileFormValues) {
-        if (!auth.currentUser) return;
+        if (!reviewer) return; // Reviewer must exist to update
         setIsSaving(true);
         try {
             const profileData = {
@@ -134,8 +136,9 @@ function ProfileForm({ reviewer, onProfileUpdate }: { reviewer: Reviewer | null,
                 turnaround: values.turnaround,
                 experience: values.experience,
                 genres: values.genres.split(',').map(g => g.trim()).filter(Boolean),
+                manualPaymentInfo: values.manualPaymentInfo,
             };
-            await updateReviewerProfile(auth.currentUser.uid, profileData);
+            await updateReviewerProfile(reviewer.id, profileData);
             toast({ title: "Profile Updated!", description: "Your public information has been saved." });
             onProfileUpdate();
         } catch (error) {
@@ -167,6 +170,9 @@ function ProfileForm({ reviewer, onProfileUpdate }: { reviewer: Reviewer | null,
                         <FormField control={form.control} name="experience" render={({ field }) => (
                             <FormItem><FormLabel>Experience / Bio</FormLabel><FormControl><Textarea rows={5} placeholder="Describe your background and what you bring to the table." {...field} /></FormControl><FormMessage /></FormItem>
                         )} />
+                        <FormField control={form.control} name="manualPaymentInfo" render={({ field }) => (
+                            <FormItem><FormLabel>Manual Payout Information</FormLabel><FormControl><Textarea rows={3} placeholder="e.g., PayPal: your@email.com, Venmo: @yourhandle, Bank: Account #1234567890" {...field} /></FormControl><FormMessage /></FormItem>
+                        )} />
                         <div className="flex justify-end">
                             <Button type="submit" disabled={isSaving}>
                                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
@@ -181,8 +187,8 @@ function ProfileForm({ reviewer, onProfileUpdate }: { reviewer: Reviewer | null,
 }
 
 export default function ProfilePage() {
+    const { currentUser, loading: authLoading } = useAuth();
     const [reviewer, setReviewer] = useState<Reviewer | null>(null);
-    const [userInfo, setUserInfo] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [editingPackage, setEditingPackage] = useState<Partial<ReviewPackage> | null>(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -190,47 +196,30 @@ export default function ProfilePage() {
 
     const loadProfile = useCallback(async () => {
       console.log("[ProfilePage] loadProfile called.");
-      if (!auth.currentUser) {
+      if (!currentUser) {
         console.log("[ProfilePage] No authenticated user in loadProfile.");
         setIsLoading(false);
         return;
       }
 
-      console.log("[ProfilePage] Authenticated user UID:", auth.currentUser.uid);
+      console.log(`[ProfilePage] Authenticated user UID: ${currentUser.id}`);
       try {
-        const currentUserInfo = await getCurrentUserInfo();
-        setUserInfo(currentUserInfo);
-        console.log("[ProfilePage] currentUserInfo:", currentUserInfo);
-
-        if (currentUserInfo) {
-          console.log("[ProfilePage] User document found, attempting to load reviewer profile.");
-          const profile = await getReviewerById(auth.currentUser.uid);
-          setReviewer(profile);
-          console.log("[ProfilePage] Reviewer profile:", profile);
-        } else {
-          console.log("[ProfilePage] No user document found for authenticated user.");
-          setReviewer(null); // Indicate no reviewer profile could be loaded
-        }
+        console.log("[ProfilePage] User document found, attempting to load reviewer profile.");
+        const profile = await getReviewerById(currentUser.id);
+        setReviewer(profile);
+        console.log("[ProfilePage] Reviewer profile:", profile);
         setIsLoading(false);
       } catch (error) {
         console.error("[ProfilePage] Error loading profile:", error);
-        // setError(true); // Assuming setError is defined elsewhere if needed
         setIsLoading(false);
       }
-    }, [/* dependencies */]); // Removed loadProfile from dependencies to prevent infinite loop
+    }, [currentUser]);
 
     useEffect(() => {
-        console.log("[ProfilePage] useEffect for auth state change.");
-        const unsubscribe = auth.onAuthStateChanged(user => {
-            console.log("[ProfilePage] Auth state changed. User:", user);
-            if (user) {
-                loadProfile();
-            } else {
-                setIsLoading(false);
-            }
-        });
-        return () => unsubscribe();
-    }, [loadProfile]);
+        if (!authLoading) {
+            loadProfile();
+        }
+    }, [authLoading, loadProfile]);
 
     const handleAddPackage = () => {
         if (reviewer && reviewer.packages.length < 5) {
@@ -249,16 +238,16 @@ export default function ProfilePage() {
     };
 
     const handleSavePackage = async (pkgData: Omit<ReviewPackage, 'id'>) => {
-        if (!auth.currentUser || !reviewer) return;
+        if (!currentUser || !reviewer) return;
         setIsSaving(true);
         
         try {
             if ((editingPackage as ReviewPackage)?.id) {
                 const updatedPkg = { ...editingPackage, ...pkgData } as ReviewPackage;
-                await updatePackage(auth.currentUser.uid, updatedPkg);
+                await updatePackage(currentUser.id, updatedPkg);
                  toast({ title: "Package Updated!", description: "Your package has been successfully updated." });
             } else {
-                await addPackage(auth.currentUser.uid, pkgData);
+                await addPackage(currentUser.id, pkgData);
                 toast({ title: "Package Added!", description: "Your new package is now live." });
             }
             setEditingPackage(null);
@@ -272,9 +261,9 @@ export default function ProfilePage() {
     }
     
     const handleDeletePackage = async (pkgId: string) => {
-        if (!auth.currentUser) return;
+        if (!currentUser) return;
         try {
-            await deletePackage(auth.currentUser.uid, pkgId);
+            await deletePackage(currentUser.id, pkgId);
             toast({ title: "Package Deleted", description: "The package has been removed." });
             await loadProfile(); 
         } catch (error) {
@@ -283,12 +272,12 @@ export default function ProfilePage() {
         }
     };
     
-    if (isLoading) {
+    if (authLoading || isLoading) {
         return <div className="flex items-center justify-center p-20"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
     }
 
     // Handle case where user is not authenticated
-    if (!auth.currentUser) {
+    if (!currentUser) {
         return (
             <div className="text-center py-20">
                 <h1 className="text-2xl font-bold">Authentication Required</h1>
@@ -300,28 +289,22 @@ export default function ProfilePage() {
         );
     }
 
-    
-
-    // Handle case where user doesn't exist in users collection
-    if (!userInfo) {
+    // Handle case where user exists but no reviewer document exists (all signed-in users are reviewers)
+    if (currentUser && currentUser.role !== "reviewer") {
         return (
             <div className="text-center py-20">
-                <h1 className="text-2xl font-bold">User Profile Not Found</h1>
+                <h1 className="text-2xl font-bold">Access Denied</h1>
                 <p className="text-muted-foreground">
-                    Your user profile was not found in the database. Please contact support.
-                </p>
-                <p className="text-sm text-muted-foreground mt-2">
-                    User ID: {auth.currentUser.uid}
+                    You do not have the necessary permissions to view this page.
                 </p>
                 <Button asChild className="mt-4">
-                    <Link href="/apply">Apply to Become a Reviewer</Link>
+                    <Link href="/">Go to Homepage</Link>
                 </Button>
             </div>
         );
     }
 
-    // Handle case where user exists but no reviewer document exists (all signed-in users are reviewers)
-    if (userInfo && !reviewer) {
+    if (!reviewer) {
         return (
             <div className="text-center py-20">
                 <h1 className="text-2xl font-bold">Reviewer Profile Not Found</h1>
@@ -329,25 +312,10 @@ export default function ProfilePage() {
                     Your reviewer profile was not found. This might be because your application is still being processed.
                 </p>
                 <p className="text-sm text-muted-foreground mt-2">
-                    User ID: {auth.currentUser.uid}
+                    User ID: {currentUser.id}
                 </p>
                 <Button asChild className="mt-4">
                     <Link href="/dev-setup">Run Database Setup</Link>
-                </Button>
-            </div>
-        );
-    }
-
-    // At this point, reviewer should be non-null, but let's be safe
-    if (!reviewer) {
-        return (
-            <div className="text-center py-20">
-                <h1 className="text-2xl font-bold">Unexpected Error</h1>
-                <p className="text-muted-foreground">
-                    Something went wrong loading your profile. Please try again.
-                </p>
-                <Button onClick={loadProfile} className="mt-4">
-                    Retry
                 </Button>
             </div>
         );

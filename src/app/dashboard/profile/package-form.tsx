@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -24,7 +23,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ReviewPackage } from "@/lib/firebase/services";
+import { ReviewPackage } from "@/lib/types";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2 } from "lucide-react";
 import { Input as ShadcnInput } from "@/components/ui/input";
@@ -137,12 +136,8 @@ export default function PackageForm({ pkg, onSave, onCancel, isSaving }: Package
                                         checked={field.value?.includes(item.id)}
                                         onCheckedChange={(checked) => {
                                             return checked
-                                            ? field.onChange([...field.value, item.id])
-                                            : field.onChange(
-                                                field.value?.filter(
-                                                (value) => value !== item.id
-                                                )
-                                            )
+                                            ? field.onChange([...field.value, item.id as 'chart' | 'written' | 'audio' | 'video'])
+                                            : field.onChange(field.value?.filter((value: string) => value !== item.id))
                                         }}
                                         />
                                     </FormControl>

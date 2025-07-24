@@ -157,7 +157,7 @@ export default function AdminLayout({
 
             if (userDocSnap.exists()) {
                 const userData = userDocSnap.data();
-                if (userData?.role === 'Admin') {
+                if (userData?.role === 'admin') {
                     setLoading(false); // User is an admin, allow access
                 } else {
                     // User is not an admin, redirect to dashboard or unauthorized page

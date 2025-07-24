@@ -1,12 +1,12 @@
-
 'use client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getDashboardStats, DashboardStats, getUsers, User, getSubmissions, Submission, getRecentActivityEvents } from "@/lib/firebase/services";
-import { ActivityEvent } from "@/lib/types";
-import { useEffect, useState } from "react";
+import { getDashboardStats, getUsers, getSubmissions, getRecentActivityEvents } from "@/lib/firebase/services";
+import { DashboardStats, User, Submission, ActivityEvent } from "@/lib/types";
+import { useEffect, useState } from 'react';
 import { Skeleton } from "@/components/ui/skeleton";
 import { subMonths, format } from 'date-fns';
 import dynamic from "next/dynamic";
+import { Users, UserCheck, Music, CheckSquare } from 'lucide-react';
 
 const UserGrowthChart = dynamic(() => import("@/components/admin/dashboard/user-growth-chart"), {
     ssr: false,
@@ -17,6 +17,10 @@ const SubmissionTrendChart = dynamic(() => import("@/components/admin/dashboard/
     loading: () => <Skeleton className="h-80" />
 });
 
+const ReferralCodeManager = dynamic(() => import("@/components/admin/referral-code-manager"), {
+    ssr: false,
+    loading: () => <Skeleton className="h-80" />
+});
 
 function StatCard({ title, value, icon: Icon, description }: { title: string, value: string, icon: React.ElementType, description?: string }) {
     return (
@@ -65,7 +69,7 @@ function processUserDataForChart(users: User[]) {
         const monthKey = format(joinedDate, 'yyyy-MM');
         if (monthlyData[monthKey]) {
             monthlyData[monthKey].users++;
-            if (user.role === 'Reviewer') {
+            if (user.role === 'reviewer') {
                 monthlyData[monthKey].reviewers++;
             }
         }
@@ -198,6 +202,17 @@ export default function AdminPage() {
                                 <p className="text-muted-foreground">No recent activity to display.</p>
                             </div>
                         )}
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Referral Code Management</CardTitle>
+                        <CardDescription>
+                            Create and manage referral codes for reviewers.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <ReferralCodeManager />
                     </CardContent>
                 </Card>
             </div>

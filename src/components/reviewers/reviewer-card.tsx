@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { Button } from "../ui/button";
 import { CheckCircle } from "lucide-react";
-import { Reviewer } from "@/lib/firebase/services";
+import { Reviewer } from "@/lib/firebase/reviewers";
 
 export default function ReviewerCard({ reviewer }: { reviewer: Reviewer }) {
   const startingPrice = reviewer.packages.length > 0 
