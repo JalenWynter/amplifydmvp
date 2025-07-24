@@ -13,14 +13,14 @@
   "engines": {
     "node": "20"
   },
-  "main": "lib/index.mjs",
+  "main": "lib/index.js",
   "dependencies": {
     "@types/node": "^24.1.0",
     "@types/stripe": "^8.0.417",
     "@types/uuid": "^10.0.0",
     "cors": "^2.8.5",
     "firebase-admin": "^12.0.0",
-    "firebase-functions": "^5.0.0",
+    "firebase-functions": "^6.4.0",
     "stripe": "^18.3.0",
     "uuid": "^11.1.0"
   },

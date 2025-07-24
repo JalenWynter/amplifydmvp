@@ -9,7 +9,7 @@
     "rules": "storage.rules"
   },
   "functions": {
-    "source": "src/functions",
+    "source": "functions",
     "runtime": "nodejs18"
   },
   "hosting": {

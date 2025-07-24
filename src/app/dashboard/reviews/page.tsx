@@ -9,7 +9,7 @@ import { Eye, FileText, Loader2, Star } from "lucide-react";
 import { useState, useEffect } from "react";
 import { getReviewsByReviewer, Review } from "@/lib/firebase/services";
 import { Skeleton } from "@/components/ui/skeleton";
-import { auth } from "@/lib/firebase/client";
+import { useAuth } from "@/context/AuthContext";
 
 function ReviewRowSkeleton() {
     return (
@@ -38,26 +38,46 @@ function EmptyState() {
 }
 
 export default function ReviewsPage() {
+    const { currentUser, loading: authLoading } = useAuth();
     const [reviews, setReviews] = useState<Review[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        const unsubscribe = auth.onAuthStateChanged(user => {
-            if (user) {
-                const fetchReviews = async () => {
-                    setIsLoading(true);
-                    const fetchedReviews = await getReviewsByReviewer(user.uid);
-                    setReviews(fetchedReviews);
-                    setIsLoading(false);
-                }
-                fetchReviews();
-            } else {
-                setIsLoading(false);
-                setReviews([]);
-            }
-        });
-         return () => unsubscribe();
-    }, []);
+        if (authLoading || !currentUser || currentUser.role !== 'reviewer') {
+            setIsLoading(false);
+            return;
+        }
+
+        const fetchReviews = async () => {
+            setIsLoading(true);
+            const fetchedReviews = await getReviewsByReviewer(currentUser.id);
+            setReviews(fetchedReviews);
+            setIsLoading(false);
+        }
+        fetchReviews();
+    }, [currentUser, authLoading]);
+
+    if (authLoading || isLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-[60vh]">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+        );
+    }
+
+    if (!currentUser || currentUser.role !== 'reviewer') {
+        return (
+            <div className="text-center py-20">
+                <h1 className="text-2xl font-bold">Access Denied</h1>
+                <p className="text-muted-foreground">
+                    You must be a reviewer to access this page.
+                </p>
+                <Button asChild className="mt-4">
+                    <Link href="/login">Log In as Reviewer</Link>
+                </Button>
+            </div>
+        );
+    }
 
     return (
         <Card>
@@ -77,9 +97,7 @@ export default function ReviewsPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {isLoading ? (
-                            Array.from({length: 5}).map((_, i) => <ReviewRowSkeleton key={i} />)
-                        ) : reviews.length > 0 ? (
+                        {reviews.length > 0 ? (
                             reviews.map((rev) => (
                                 <TableRow key={rev.id}>
                                     <TableCell className="font-medium max-w-[200px] truncate" title={rev.submissionDetails.artistName}>{rev.submissionDetails.artistName}</TableCell>
@@ -93,7 +111,7 @@ export default function ReviewsPage() {
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <Button asChild size="sm" variant="outline">
-                                            <Link href={`/dashboard/review/${rev.submissionId}`}>
+                                            <Link href={`/dashboard/reviewer/${rev.submissionId}`}>
                                                 <Eye className="mr-2 h-4 w-4" />
                                                 View Review
                                             </Link>

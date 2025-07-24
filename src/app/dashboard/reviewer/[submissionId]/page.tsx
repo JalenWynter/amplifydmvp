@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { getSubmissionById } from '@/lib/firebase/submissions';
 import { Submission, ReviewFormData, ReviewFormSchema } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Music, PlayCircle } from 'lucide-react';
+import { Loader2, Music, PlayCircle, ArrowLeft } from 'lucide-react';
 import ScoringChart from '@/components/review/scoring-chart';
 import { useToast } from '@/hooks/use-toast';
 import { submitReview } from '@/lib/firebase/reviews';
@@ -34,6 +34,8 @@ export default function ReviewSubmissionPage() {
       strengths: '',
       improvements: '',
       summary: '',
+      audioFeedbackUrl: '',
+      videoFeedbackUrl: '',
     },
   });
 
@@ -48,7 +50,6 @@ export default function ReviewSubmissionPage() {
       }
 
       if (!currentUser || currentUser.role !== 'reviewer') {
-        // Access control handled by AuthProvider and further by Firestore rules
         setLoadingSubmission(false);
         return;
       }
@@ -56,7 +57,6 @@ export default function ReviewSubmissionPage() {
       try {
         const fetchedSubmission = await getSubmissionById(submissionId as string);
         if (fetchedSubmission) {
-          // Security: Ensure the current user is the assigned reviewer
           if (fetchedSubmission.reviewerId !== currentUser.id) {
             setError("You are not authorized to review this submission.");
             setSubmission(null);
@@ -83,9 +83,16 @@ export default function ReviewSubmissionPage() {
     if (!submission || !currentUser) return;
 
     try {
-      await submitReview({ submissionId: submission.id, reviewData: values, overallScore: values.overallScore });
-      toast({ title: "Review Submitted!", description: "Your review has been successfully recorded." });
-      router.push('/dashboard/reviewer'); // Redirect back to dashboard
+      await submitReview({ 
+        submissionId: submission.id, 
+        reviewData: values, 
+        overallScore: values.overallScore 
+      });
+      toast({ 
+        title: "Review Submitted!", 
+        description: "Your review has been successfully recorded." 
+      });
+      router.push('/dashboard/reviewer');
     } catch (err: unknown) {
       console.error("Error submitting review:", err);
       let errorMessage = "An unknown error occurred.";
@@ -94,7 +101,11 @@ export default function ReviewSubmissionPage() {
       } else if (typeof err === "object" && err !== null && "message" in err) {
           errorMessage = (err as { message: string }).message;
       }
-      toast({ title: "Error", description: errorMessage || "Failed to submit review.", variant: "destructive" });
+      toast({ 
+        title: "Error", 
+        description: errorMessage || "Failed to submit review.", 
+        variant: "destructive" 
+      });
     }
   };
 
@@ -131,21 +142,42 @@ export default function ReviewSubmissionPage() {
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold font-headline">Review Submission</h1>
-        <p className="text-muted-foreground">Provide your detailed feedback for this track.</p>
+    <div className="max-w-6xl mx-auto space-y-8 p-6">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/dashboard/reviewer">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Dashboard
+          </Link>
+        </Button>
+        <div>
+          <h1 className="text-3xl font-bold font-headline">Review Submission</h1>
+          <p className="text-muted-foreground">Provide your detailed feedback for this track.</p>
+        </div>
       </div>
 
+      {/* Submission Info */}
       <Card>
         <CardHeader>
-          <CardTitle>{submission.songTitle}</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Music className="w-5 h-5" />
+            {submission.songTitle}
+          </CardTitle>
           <CardDescription>by {submission.artistName}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-muted-foreground">Genre: {submission.genre}</p>
-          <p className="text-muted-foreground">Submitted: {new Date(submission.submittedAt).toLocaleDateString()}</p>
-          <Button asChild>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Genre</p>
+              <p className="text-lg">{submission.genre}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Submitted</p>
+              <p className="text-lg">{new Date(submission.submittedAt).toLocaleDateString()}</p>
+            </div>
+          </div>
+          <Button asChild className="w-full md:w-auto">
             <a href={submission.songUrl} target="_blank" rel="noopener noreferrer">
               <PlayCircle className="w-5 h-5 mr-2" /> Listen to Track
             </a>
@@ -153,12 +185,35 @@ export default function ReviewSubmissionPage() {
         </CardContent>
       </Card>
 
+      {/* Review Form */}
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleReviewSubmit)} className="space-y-8">
           <ScoringChart form={form} scores={form.watch()} />
-          <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-            {form.formState.isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Submit Review'}
-          </Button>
+          
+          <div className="flex gap-4 pt-6">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => router.push('/dashboard/reviewer')}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="submit" 
+              className="flex-1" 
+              disabled={form.formState.isSubmitting}
+            >
+              {form.formState.isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Submitting Review...
+                </>
+              ) : (
+                'Submit Review'
+              )}
+            </Button>
+          </div>
         </form>
       </Form>
     </div>

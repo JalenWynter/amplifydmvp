@@ -7,7 +7,11 @@ import { Slider } from '../ui/slider';
 import { Textarea } from '../ui/textarea';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { FormField, FormMessage, FormControl } from '../ui/form';
-import { ReviewFormData } from '@/lib/types'; // Import ReviewFormData
+import { ReviewFormData } from '@/lib/types';
+import AudioRecorder from './audio-recorder';
+import VideoRecorder from './video-recorder';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Mic, FileAudio, FileVideo } from 'lucide-react';
 
 const scoringFactors = {
   Composition: [
@@ -53,7 +57,6 @@ schemaObject.isDraft = z.boolean().optional();
 
 export const reviewSchema = z.object(schemaObject);
 
-
 interface ScoringChartProps {
     form: ReturnType<typeof useForm<ReviewFormData>>;
     scores: Partial<ReviewFormData>;
@@ -62,94 +65,170 @@ interface ScoringChartProps {
 export default function ScoringChart({ form, scores }: ScoringChartProps) {
 
   return (
-    <div className="space-y-6">
-        <Accordion type="multiple" defaultValue={Object.keys(scoringFactors)} className="w-full">
-            {Object.entries(scoringFactors).map(([category, factors]) => (
-                <AccordionItem value={category} key={category}>
-                    <AccordionTrigger className="text-lg font-semibold">{category}</AccordionTrigger>
-                    <AccordionContent className="space-y-6 pt-4">
-                        {factors.map(factor => (
-                            <FormField
-                                key={factor.id}
-                                name={factor.id as keyof ReviewFormData} // Changed from ReviewFormValues
-                                control={form.control}
-                                render={({ field }) => (
-                                     <div className="grid gap-3">
-                                        <Label htmlFor={factor.id}>{factor.label}</Label>
-                                        <div className="flex items-center gap-4">
-                                        <Slider
-                                            id={factor.id}
-                                            min={0}
-                                            max={10}
-                                            step={0.5}
-                                            value={[field.value]}
-                                            onValueChange={(val) => field.onChange(val[0])}
-                                            className="flex-1"
+    <div className="space-y-8">
+        {/* Scoring Section */}
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <FileAudio className="w-5 h-5" />
+                    Scoring & Evaluation
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="px-6">
+                <Accordion type="multiple" defaultValue={Object.keys(scoringFactors)} className="w-full">
+                    {Object.entries(scoringFactors).map(([category, factors]) => (
+                        <AccordionItem value={category} key={category}>
+                            <AccordionTrigger className="text-lg font-semibold hover:no-underline">
+                                {category} ({factors.length} criteria)
+                            </AccordionTrigger>
+                            <AccordionContent className="space-y-6 pt-6">
+                                <div className="space-y-6">
+                                    {factors.map(factor => (
+                                        <FormField
+                                            key={factor.id}
+                                            name={factor.id as keyof ReviewFormData}
+                                            control={form.control}
+                                            render={({ field }) => (
+                                                <div className="space-y-3">
+                                                    <Label htmlFor={factor.id} className="text-base font-medium">
+                                                        {factor.label}
+                                                    </Label>
+                                                    <div className="flex items-center gap-4">
+                                                        <Slider
+                                                            id={factor.id}
+                                                            min={0}
+                                                            max={10}
+                                                            step={0.5}
+                                                            value={[field.value || 5]}
+                                                            onValueChange={(val) => field.onChange(val[0])}
+                                                            className="flex-1"
+                                                        />
+                                                        <span className="w-16 text-center font-mono text-lg font-bold text-primary bg-primary/10 px-3 py-2 rounded min-w-0">
+                                                            {(scores[factor.id as keyof ReviewFormData] as number ?? 5).toFixed(1)}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            )}
                                         />
-                                        <span className="w-10 text-right font-mono text-primary font-semibold">
-                                            {(scores[factor.id as keyof ReviewFormData] as number ?? 5).toFixed(1)} // Changed from ReviewFormValues
-                                        </span>
-                                        </div>
-                                    </div>
-                                )}
-                            />
-                        ))}
-                    </AccordionContent>
-                </AccordionItem>
-            ))}
-        </Accordion>
+                                    ))}
+                                </div>
+                            </AccordionContent>
+                        </AccordionItem>
+                    ))}
+                </Accordion>
+            </CardContent>
+        </Card>
 
-        <div className="space-y-4 pt-4">
-            <FormField
-                control={form.control}
-                name="strengths"
-                render={({ field }) => (
-                    <div className="space-y-2">
-                        <Label htmlFor="strengths" className="text-lg font-semibold">Strengths</Label>
-                        <FormControl>
-                            <Textarea id="strengths" rows={4} placeholder="What worked well in this track? Be specific about elements like melody, rhythm, lyrics, production choices, etc." className="mt-2" {...field} />
-                        </FormControl>
-                        <FormMessage />
+        {/* Audio/Video Feedback Section */}
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <Mic className="w-5 h-5" />
+                    Audio & Video Feedback (Optional)
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                <div className="grid gap-6 md:grid-cols-2">
+                    <div className="space-y-4">
+                        <Label className="text-base font-medium flex items-center gap-2">
+                            <FileAudio className="w-4 h-4" />
+                            Audio Feedback
+                        </Label>
+                        <AudioRecorder
+                            onRecordingComplete={(url) => form.setValue('audioFeedbackUrl', url)}
+                            existingAudioUrl={scores.audioFeedbackUrl}
+                        />
                     </div>
-                )}
-            />
-             <FormField
-                control={form.control}
-                name="improvements"
-                render={({ field }) => (
-                     <div className="space-y-2">
-                        <Label htmlFor="improvements" className="text-lg font-semibold">Areas for Improvement</Label>
-                        <FormControl>
-                            <Textarea id="improvements" rows={4} placeholder="What could be improved? Offer constructive criticism on aspects that could be stronger." className="mt-2" {...field} />
-                        </FormControl>
-                        <FormMessage />
+                    <div className="space-y-4">
+                        <Label className="text-base font-medium flex items-center gap-2">
+                            <FileVideo className="w-4 h-4" />
+                            Video Feedback
+                        </Label>
+                        <VideoRecorder
+                            onRecordingComplete={(url) => form.setValue('videoFeedbackUrl', url)}
+                            existingVideoUrl={scores.videoFeedbackUrl}
+                        />
                     </div>
-                )}
-            />
-            
-            <FormField
-                control={form.control}
-                name="summary"
-                render={({ field }) => (
-                     <div className="space-y-2">
-                        <Label htmlFor="summary" className="text-lg font-semibold">Overall Review</Label>
-                        <FormControl>
-                            <Textarea 
-                                id="summary" 
-                                rows={6} 
-                                placeholder="Provide a comprehensive overall review of this track. Include your thoughts on the production, performance, commercial potential, and any other relevant aspects. This will be the main review text that appears on the artist's review page."
-                                className="mt-2 min-h-[150px] resize-y"
-                                {...field} 
-                            />
-                        </FormControl>
-                        <FormMessage />
-                        <div className="text-xs text-muted-foreground">
-                            {field.value?.length || 0} characters (minimum 100 required)
+                </div>
+            </CardContent>
+        </Card>
+
+        {/* Written Feedback Section */}
+        <Card>
+            <CardHeader>
+                <CardTitle>Written Feedback</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                <FormField
+                    control={form.control}
+                    name="strengths"
+                    render={({ field }) => (
+                        <div className="space-y-2">
+                            <Label htmlFor="strengths" className="text-lg font-semibold">Strengths</Label>
+                            <FormControl>
+                                <Textarea 
+                                    id="strengths" 
+                                    rows={4} 
+                                    placeholder="What worked well in this track? Be specific about elements like melody, rhythm, lyrics, production choices, etc." 
+                                    className="resize-y" 
+                                    {...field} 
+                                />
+                            </FormControl>
+                            <FormMessage />
+                            <div className="text-xs text-muted-foreground">
+                                {field.value?.length || 0} characters (minimum 50 required)
+                            </div>
                         </div>
-                    </div>
-                )}
-            />
-        </div>
+                    )}
+                />
+                
+                <FormField
+                    control={form.control}
+                    name="improvements"
+                    render={({ field }) => (
+                        <div className="space-y-2">
+                            <Label htmlFor="improvements" className="text-lg font-semibold">Areas for Improvement</Label>
+                            <FormControl>
+                                <Textarea 
+                                    id="improvements" 
+                                    rows={4} 
+                                    placeholder="What could be improved? Offer constructive criticism on aspects that could be stronger." 
+                                    className="resize-y" 
+                                    {...field} 
+                                />
+                            </FormControl>
+                            <FormMessage />
+                            <div className="text-xs text-muted-foreground">
+                                {field.value?.length || 0} characters (minimum 50 required)
+                            </div>
+                        </div>
+                    )}
+                />
+                
+                <FormField
+                    control={form.control}
+                    name="summary"
+                    render={({ field }) => (
+                        <div className="space-y-2">
+                            <Label htmlFor="summary" className="text-lg font-semibold">Overall Review</Label>
+                            <FormControl>
+                                <Textarea 
+                                    id="summary" 
+                                    rows={6} 
+                                    placeholder="Provide a comprehensive overall review of this track. Include your thoughts on the production, performance, commercial potential, and any other relevant aspects. This will be the main review text that appears on the artist's review page."
+                                    className="min-h-[150px] resize-y"
+                                    {...field} 
+                                />
+                            </FormControl>
+                            <FormMessage />
+                            <div className="text-xs text-muted-foreground">
+                                {field.value?.length || 0} characters (minimum 100 required)
+                            </div>
+                        </div>
+                    )}
+                />
+            </CardContent>
+        </Card>
     </div>
   );
 }

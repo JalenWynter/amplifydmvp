@@ -1,5 +1,5 @@
 // This file contains all client-side functions for interacting with Submission data.
-import { httpsCallable } from "firebase/functions";
+import { getFunctions, httpsCallable } from "firebase/functions";
 import { ref, getDownloadURL, uploadBytes } from "firebase/storage";
 import { storage, getFirebaseFunctions } from "./client";
 import { collection, getDocs, doc, getDoc, query, orderBy, where, updateDoc } from "firebase/firestore";
@@ -7,32 +7,37 @@ import { db } from "./client";
 import type { Submission, Review } from '../types';
 
 /**
- * Uploads a music file to Firebase Storage using the Firebase Storage SDK.
+ * Uploads a music file to Firebase Storage using a signed URL for anonymous users.
  * @param file The File object to upload.
  * @returns The full URL of the uploaded file in Firebase Storage.
  */
 export async function uploadMusicFile(file: File): Promise<string> {
     console.log("Uploading file to Firebase Storage...");
-    
     try {
-        // Generate a unique file path for anonymous uploads
-        const timestamp = Date.now();
-        const randomId = Math.random().toString(36).substring(2, 15);
-        const filePath = `submissions/anonymous/${timestamp}-${randomId}-${file.name}`;
-        
-        console.log(`Uploading file to: ${filePath}`);
-
-        // Use Firebase Storage SDK to upload the file
-        const storageRef = ref(storage, filePath);
-        const snapshot = await uploadBytes(storageRef, file, {
-            contentType: file.type,
+        // Use Firebase Functions to get a signed URL for anonymous upload
+        const functions = getFunctions();
+        const getSignedUploadUrl = httpsCallable(functions, "getSignedUploadUrl");
+        const { data } = await getSignedUploadUrl({ fileName: file.name, contentType: file.type });
+        if (!data || !data.url || !data.filePath) {
+            throw new Error("Failed to get signed upload URL.");
+        }
+        // Upload the file using fetch and the signed URL
+        const uploadResponse = await fetch(data.url, {
+            method: "PUT",
+            headers: {
+                "Content-Type": file.type,
+                "x-goog-meta-signed-url": "true"
+            },
+            body: file
         });
-
-        // Get the download URL
-        const downloadUrl = await getDownloadURL(snapshot.ref);
+        if (!uploadResponse.ok) {
+            throw new Error("Failed to upload file using signed URL.");
+        }
+        // Construct the download URL
+        const bucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+        const downloadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(data.filePath)}?alt=media`;
         console.log("File uploaded successfully. Download URL:", downloadUrl);
         return downloadUrl;
-
     } catch (error: unknown) {
         console.error("Error in uploadMusicFile:", error);
         let errorMessage = "An unknown error occurred.";

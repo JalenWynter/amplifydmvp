@@ -92,8 +92,20 @@ service cloud.firestore {
 
     // ReferralCodes Collection: Single-use codes for tracking reviewer recruitment.
     match /referralCodes/{codeId} {
-      // Read: Admin can read all. User can read their own codes.
-      allow read: if isAdmin() || isOwner(resource.data.userId);
+      // Read: Admin can read all. User can read their own codes. Reviewer can read codes they created.
+      allow read: if isAdmin() || isOwner(resource.data.userId) || (isReviewer() && request.auth.uid == resource.data.referrerId);
+      // Create: Admin only.
+      allow create: if isAdmin();
+      // Update: Admin only.
+      allow update: if isAdmin();
+      // Delete: Admin only.
+      allow delete: if isAdmin();
+    }
+
+    // ReferralEarnings Collection: Records of referral commission earnings.
+    match /referralEarnings/{earningId} {
+      // Read: Admin can read all. Reviewer can read their own earnings.
+      allow read: if isAdmin() || (isReviewer() && request.auth.uid == resource.data.referrerId);
       // Create: Admin only.
       allow create: if isAdmin();
       // Update: Admin only.

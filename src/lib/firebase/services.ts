@@ -50,9 +50,10 @@ export { updateUserRole, updateUserStatus } from './admin/users';
 export { getDashboardStats, getFinancialStats } from './admin/dashboard';
 
 // Original content of getAppSettings and updateAppSettings (kept here for now)
-import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, limit } from "firebase/firestore";
 import { db } from "./client";
-import { AppSettings, APPLICATION_MODE } from '../constants';
+import { APPLICATION_MODE } from '../constants';
+import { AppSettings } from '../types';
 import { AppSettingsSchema } from '../types';
 
 let cachedSettings: AppSettings | null = null;

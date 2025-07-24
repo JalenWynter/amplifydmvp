@@ -31,7 +31,6 @@ export default function Footer() {
             <h3 className="font-semibold text-foreground">Developer</h3>
             <ul className="mt-4 space-y-2 text-sm">
               <li><Link href="/dev-setup" className="text-muted-foreground hover:text-foreground">Dev Setup</Link></li>
-              <li><Link href="/changelog.md" className="text-muted-foreground hover:text-foreground">Changelog</Link></li>
             </ul>
           </div>
         </div>

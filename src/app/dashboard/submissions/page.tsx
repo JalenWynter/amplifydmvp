@@ -10,8 +10,7 @@ import { FileAudio, Music, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { getSubmissions, Submission, hasReviewerSubmittedReview } from "@/lib/firebase/services";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAuthState } from "react-firebase-hooks/auth";
-import { auth } from "@/lib/firebase/client";
+import { useAuth } from "@/context/AuthContext";
 
 function SubmissionRowSkeleton() {
     return (
@@ -40,30 +39,55 @@ function EmptyState() {
 }
 
 export default function SubmissionsPage() {
-    const [user, loadingAuth] = useAuthState(auth);
+    const { currentUser, loading: authLoading } = useAuth();
     const [submissions, setSubmissions] = useState<Submission[]>([]);
     const [submissionReviewStatus, setSubmissionReviewStatus] = useState<Record<string, boolean>>({});
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        if (loadingAuth || !user) return;
+        if (authLoading || !currentUser || currentUser.role !== 'reviewer') {
+            setIsLoading(false);
+            return;
+        }
         
         const fetchSubmissions = async () => {
             setIsLoading(true);
-            const fetchedSubmissions = await getSubmissions({ reviewerId: user.uid });
+            const fetchedSubmissions = await getSubmissions({ reviewerId: currentUser.id });
             setSubmissions(fetchedSubmissions);
             
             // Check review status for each submission
             const reviewStatusMap: Record<string, boolean> = {};
             for (const submission of fetchedSubmissions) {
-                reviewStatusMap[submission.id] = await hasReviewerSubmittedReview(submission.id, user.uid);
+                reviewStatusMap[submission.id] = await hasReviewerSubmittedReview(submission.id, currentUser.id);
             }
             setSubmissionReviewStatus(reviewStatusMap);
             
             setIsLoading(false);
         }
         fetchSubmissions();
-    }, [user, loadingAuth]);
+    }, [currentUser, authLoading]);
+
+    if (authLoading || isLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-[60vh]">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+        );
+    }
+
+    if (!currentUser || currentUser.role !== 'reviewer') {
+        return (
+            <div className="text-center py-20">
+                <h1 className="text-2xl font-bold">Access Denied</h1>
+                <p className="text-muted-foreground">
+                    You must be a reviewer to access this page.
+                </p>
+                <Button asChild className="mt-4">
+                    <Link href="/login">Log In as Reviewer</Link>
+                </Button>
+            </div>
+        );
+    }
 
     return (
         <Card>
@@ -83,9 +107,7 @@ export default function SubmissionsPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {isLoading || loadingAuth ? (
-                            Array.from({length: 5}).map((_, i) => <SubmissionRowSkeleton key={i} />)
-                        ) : submissions.length > 0 ? (
+                        {submissions.length > 0 ? (
                             submissions.map((sub) => {
                                 const hasReviewBeenSubmitted = submissionReviewStatus[sub.id];
                                 return (
@@ -105,7 +127,7 @@ export default function SubmissionsPage() {
                                                 </Badge>
                                             ) : (
                                                 <Button asChild size="sm" variant="outline">
-                                                    <Link href={`/dashboard/review/${sub.id}`}>
+                                                    <Link href={`/dashboard/reviewer/${sub.id}`}>
                                                         Start Review
                                                     </Link>
                                                 </Button>

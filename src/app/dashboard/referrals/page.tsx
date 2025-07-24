@@ -10,8 +10,7 @@ import { useState, useEffect } from "react";
 import { formatDistanceToNow } from 'date-fns';
 import { getReferralCodes, getReferralStats, getReferralEarnings, getUserReferralHistory } from "@/lib/firebase/services";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth } from '@/lib/firebase/client';
+import { useAuth } from '@/context/AuthContext';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useSearchParams } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
@@ -52,7 +51,7 @@ function EmptyState() {
 }
 
 export default function ReviewerReferralsPage() {
-    const [user, loading] = useAuthState(auth);
+    const { currentUser, loading: authLoading } = useAuth();
     const searchParams = useSearchParams();
     const newCodeId = searchParams.get('newCode');
     const { toast } = useToast();
@@ -68,7 +67,10 @@ export default function ReviewerReferralsPage() {
     const [_, setNow] = useState(new Date()); // Used to force re-renders for timeago
 
     useEffect(() => {
-        if (loading || !user) return;
+        if (authLoading || !currentUser || currentUser.role !== 'reviewer') {
+            setIsLoading(false);
+            return;
+        }
 
         const fetchData = async () => {
             setIsLoading(true);
@@ -76,14 +78,14 @@ export default function ReviewerReferralsPage() {
                 // Fetch all referral-related data
                 const [codes, stats, earnings, history] = await Promise.all([
                     getReferralCodes(),
-                    getReferralStats(user.uid),
-                    getReferralEarnings(user.uid),
-                    getUserReferralHistory(user.uid)
+                    getReferralStats(currentUser.id),
+                    getReferralEarnings(currentUser.id),
+                    getUserReferralHistory(currentUser.id)
                 ]);
 
                 // Filter codes to only show those created by this reviewer
                 const myReferralCodes = codes.filter(code => 
-                    code.referrerId === user.uid
+                    code.referrerId === currentUser.id
                 );
                 
                 setReferralCodes(myReferralCodes);
@@ -108,7 +110,7 @@ export default function ReviewerReferralsPage() {
         }, 30000); // Update every 30 seconds
 
         return () => clearInterval(interval);
-    }, [user, loading]);
+    }, [currentUser, authLoading]);
 
     const copyToClipboard = async (code: string) => {
         try {
@@ -152,10 +154,24 @@ export default function ReviewerReferralsPage() {
         }
     }
 
-    if (loading) {
+    if (authLoading || isLoading) {
         return (
-            <div className="flex justify-center items-center h-64">
-                <Loader2 className="h-8 w-8 animate-spin" />
+            <div className="flex items-center justify-center min-h-[60vh]">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+        );
+    }
+
+    if (!currentUser || currentUser.role !== 'reviewer') {
+        return (
+            <div className="text-center py-20">
+                <h1 className="text-2xl font-bold">Access Denied</h1>
+                <p className="text-muted-foreground">
+                    You must be a reviewer to access this page.
+                </p>
+                <Button asChild className="mt-4">
+                    <Link href="/login">Log In as Reviewer</Link>
+                </Button>
             </div>
         );
     }
