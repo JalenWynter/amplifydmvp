@@ -1,91 +1,32 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
 # Dependencies
-/node_modules
-/src/functions/node_modules
-/.pnp
-.pnp.js
-
-# Testing
-/coverage
-
-# Next.js build output
-/.next/
-/out/
-
-# Production
-/build
-
-# Misc
-.DS_Store
-*.pem
-
-# Local env files
-.env*.local
-.env
-.env.local
-
-# Log files
+node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-firebase-debug.log
-firestore-debug.log
 
-# Editor directories and files
-.vscode*/
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
-.idea
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
 
-# Firebase
-.firebase/
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# Generated JS and Map files
-src/**/*.js
-src/**/*.js.map
-
-# TypeScript build info
-tsconfig.tsbuildinfo
-
-# Temporary files
-temp_service_account.json
-.modified
-commit_message.txt
-
-# Firebase Service Account Keys (SECURITY: Never commit these!)
-scripts/serviceAccountKey.json
-*.serviceAccountKey.json
-
-# Debug files
-firebase-debug.log
-firestore-debug.log
-
-# Additional exclusions
-logs/
-.idx/
-amplifydmvp/
-admin/
-dev-setup/
-
-# Build artifacts
-*.tsbuildinfo
+# Build outputs
 .next/
 out/
 build/
-
-# OS generated files
-Thumbs.db
-ehthumbs.db
-Desktop.ini
+dist/
 
 # IDE files
 .vscode/
@@ -94,7 +35,19 @@ Desktop.ini
 *.swo
 *~
 
-# Temporary files
-*.tmp
-*.temp
-.cache/
+# Logs
+*.log
+logs/
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+
+# Temporary folders
+tmp/
+temp/
