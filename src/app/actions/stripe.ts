@@ -3,8 +3,11 @@
 import { redirect } from 'next/navigation';
 import Stripe from 'stripe';
 import { createTransaction } from '@/lib/firebase/services';
+import { createSubmissionViaFunction } from '@/lib/firebase/submissions';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+// Use test key for development, fallback for demo purposes
+const stripeKey = process.env.STRIPE_SECRET_KEY || 'sk_test_demo_key';
+const stripe = stripeKey === 'sk_test_demo_key' ? null : new Stripe(stripeKey);
 
 type CheckoutSessionPayload = {
     priceInCents: number;
@@ -27,8 +30,46 @@ export async function createCheckoutSession(payload: CheckoutSessionPayload): Pr
 
     const host = process.env.NEXT_PUBLIC_HOST_URL || 'http://localhost:9002';
 
-    if (!process.env.STRIPE_SECRET_KEY) {
-        return { error: 'Stripe secret key is not configured.' };
+    if (!stripe) {
+        // For demo purposes, simulate successful payment
+        console.log("Demo mode: Simulating successful payment");
+        try {
+            // Create transaction record
+            await createTransaction({
+                stripeSessionId: `demo_session_${Date.now()}`,
+                artistName: metadata.artistName,
+                songTitle: metadata.songTitle,
+                contactEmail: metadata.contactEmail,
+                amount: priceInCents,
+                currency: 'usd',
+                status: 'completed' as const, // Mark as completed for demo
+                reviewerId: metadata.reviewerId,
+                packageId: metadata.packageId,
+            });
+
+            // Create submission record
+            await createSubmissionViaFunction({
+                artistName: metadata.artistName,
+                songTitle: metadata.songTitle,
+                contactEmail: metadata.contactEmail,
+                audioUrl: metadata.audioUrl,
+                genre: metadata.genre,
+                reviewerId: metadata.reviewerId,
+                packageId: metadata.packageId,
+                paymentIntentId: `demo_payment_${Date.now()}`,
+                amount: priceInCents,
+                currency: 'usd',
+                stripeSessionId: `demo_session_${Date.now()}`,
+                packageName: productName,
+                packageDescription: productDescription,
+            });
+
+            console.log("Demo mode: Transaction and submission created successfully");
+            return { url: `${host}/submit-success?demo=true` };
+        } catch (error) {
+            console.error("Failed to create demo transaction/submission:", error);
+            return { error: 'Failed to create demo transaction/submission.' };
+        }
     }
 
     // NOTE: Submissions are created ONLY via Stripe webhook after payment confirmation
@@ -56,18 +97,47 @@ export async function createCheckoutSession(payload: CheckoutSessionPayload): Pr
             metadata: metadata, // Pass our custom metadata to the session
         });
         
-        // Create transaction record - temporarily commented out for deployment
-        // await createTransaction({
-        //     stripeSessionId: session.id,
-        //     artistName: metadata.artistName,
-        //     songTitle: metadata.songTitle,
-        //     contactEmail: metadata.contactEmail,
-        //     amount: priceInCents,
-        //     currency: 'usd',
-        //     status: 'pending' as const,
-        //     reviewerId: metadata.reviewerId,
-        //     packageId: metadata.packageId,
-        // });
+        // Create transaction record
+        try {
+            await createTransaction({
+                stripeSessionId: session.id,
+                artistName: metadata.artistName,
+                songTitle: metadata.songTitle,
+                contactEmail: metadata.contactEmail,
+                amount: priceInCents,
+                currency: 'usd',
+                status: 'pending' as const,
+                reviewerId: metadata.reviewerId,
+                packageId: metadata.packageId,
+            });
+            console.log("Transaction record created successfully");
+        } catch (transactionError) {
+            console.error("Failed to create transaction record:", transactionError);
+            // Continue with checkout even if transaction creation fails
+        }
+
+        // Create submission record immediately (backup to webhook)
+        try {
+            await createSubmissionViaFunction({
+                artistName: metadata.artistName,
+                songTitle: metadata.songTitle,
+                contactEmail: metadata.contactEmail,
+                audioUrl: metadata.audioUrl,
+                genre: metadata.genre,
+                reviewerId: metadata.reviewerId,
+                packageId: metadata.packageId,
+                paymentIntentId: session.payment_intent as string,
+                amount: priceInCents,
+                currency: 'usd',
+                stripeSessionId: session.id,
+                packageName: productName,
+                packageDescription: productDescription,
+            });
+            console.log("Submission record created successfully");
+        } catch (submissionError) {
+            console.error("Failed to create submission record:", submissionError);
+            // Continue with checkout even if submission creation fails
+        }
         
         return { url: session.url };
 

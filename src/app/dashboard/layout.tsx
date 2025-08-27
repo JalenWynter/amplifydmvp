@@ -58,7 +58,7 @@ const NavContent = ({ user, pathname, userRole }: { user: AppUser, pathname: str
        <div className="mt-auto border-t p-4">
             <div className='flex items-center gap-3 mb-4'>
                 <Avatar>
-                    <AvatarImage src={user?.avatarUrl || "https://placehold.co/40x40.png"} alt="User" data-ai-hint="woman portrait" />
+                    <AvatarImage src={user?.avatarUrl || "/USETHIS.png"} alt="User" data-ai-hint="woman portrait" />
                     <AvatarFallback>{user?.name?.charAt(0) || user?.email?.charAt(0)}</AvatarFallback>
                 </Avatar>
                 <div>

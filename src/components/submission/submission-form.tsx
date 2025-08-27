@@ -27,8 +27,14 @@ import { Separator } from "../ui/separator";
 
 
 // Extend the base schema to include musicFile for the form
-const SubmissionSchema = BaseSubmissionSchema.extend({
-  musicFile: z.any().optional(),
+const SubmissionFormSchema = z.object({
+  artistName: z.string().min(1, 'Artist name is required'),
+  songTitle: z.string().min(1, 'Song title is required'),
+  contactEmail: z.string().email('Valid email required'),
+  genre: z.string().min(1, 'Genre is required'),
+  reviewerId: z.string().min(1, 'Reviewer is required'),
+  packageId: z.string().min(1, 'Package is required'),
+  musicFile: z.any().refine((val) => val && val.length > 0, { message: 'Music file is required' }),
 });
 
 export default function SubmissionForm({ preselectedReviewerId: initialReviewerId }: { preselectedReviewerId?: string }) {
@@ -53,8 +59,8 @@ export default function SubmissionForm({ preselectedReviewerId: initialReviewerI
     fetchReviewers();
   }, []);
 
-  const form = useForm<z.infer<typeof SubmissionSchema>>({
-    resolver: zodResolver(SubmissionSchema),
+  const form = useForm<z.infer<typeof SubmissionFormSchema>>({
+    resolver: zodResolver(SubmissionFormSchema),
     defaultValues: {
       artistName: "",
       songTitle: "",
@@ -62,6 +68,7 @@ export default function SubmissionForm({ preselectedReviewerId: initialReviewerI
       genre: "",
       reviewerId: preselectedReviewerId || "",
       packageId: preselectedPackageId || "",
+      musicFile: undefined,
     },
   });
 
@@ -119,7 +126,8 @@ export default function SubmissionForm({ preselectedReviewerId: initialReviewerI
   }, [searchParams, reviewers, selectedReviewer]);
 
 
-  async function onSubmit(data: z.infer<typeof SubmissionSchema>) {
+  async function onSubmit(data: z.infer<typeof SubmissionFormSchema>) {
+    console.log('clicked');
     setIsSubmitting(true);
     
     if (!selectedReviewer || !selectedPackage) {
@@ -176,6 +184,8 @@ export default function SubmissionForm({ preselectedReviewerId: initialReviewerI
     }
   }
 
+  // Debug: log form errors
+  console.log('form errors', form.formState.errors);
   return (
     <Card className="w-full">
          <CardHeader>

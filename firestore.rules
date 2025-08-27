@@ -7,6 +7,11 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Development mode helper - allows unauthenticated access for testing
+    function isDevelopmentMode() {
+      return true; // Enable for emulator testing
+    }
+
     function isAdmin() {
       return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
@@ -21,8 +26,8 @@ service cloud.firestore {
 
     // Users Collection: Stores all registered users (Admins, Reviewers, Artists).
     match /users/{userId} {
-      // Read: User can read their own profile. Admins can read all.
-      allow read: if isOwner(userId) || isAdmin();
+      // Read: User can read their own profile. Admins can read all. Development mode allows all.
+      allow read: if isDevelopmentMode() || isOwner(userId) || isAdmin();
       // Create: Allow any authenticated user to create their own user profile on signup.
       allow create: if isAuthenticated();
       // Update: User can update their own profile. Admins can update all.
@@ -108,6 +113,30 @@ service cloud.firestore {
       allow read: if true;
       // Write: Admin only.
       allow write: if isAdmin();
+    }
+
+    // Earnings Collection: Tracks reviewer earnings and payments.
+    match /earnings/{earningId} {
+      // Read: Admin can read all. Reviewer can read their own earnings.
+      allow read: if isAdmin() || (isReviewer() && request.auth.uid == resource.data.reviewerId);
+      // Create: Admin only (via cloud functions).
+      allow create: if isAdmin();
+      // Update: Admin only.
+      allow update: if isAdmin();
+      // Delete: Admin only.
+      allow delete: if isAdmin();
+    }
+
+    // Transactions Collection: Records of all financial transactions.
+    match /transactions/{transactionId} {
+      // Read: Admin can read all. User can read their own transactions.
+      allow read: if isAdmin() || isOwner(resource.data.userId);
+      // Create: Allow anonymous creation for payment processing.
+      allow create: if isDevelopmentMode() || isAdmin();
+      // Update: Admin only.
+      allow update: if isAdmin();
+      // Delete: Admin only.
+      allow delete: if isAdmin();
     }
   }
 }

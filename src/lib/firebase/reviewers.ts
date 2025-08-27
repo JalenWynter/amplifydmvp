@@ -1,133 +1,44 @@
 
 // This file contains all client-side functions for interacting with Reviewer data.
-import { collection, getDocs, doc, getDoc, query, orderBy, where } from "firebase/firestore";
-import { getFunctions, httpsCallable } from "firebase/functions";
+import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import { db } from "./client";
-import type { Reviewer, ReviewPackage, Review } from '../types';
-
-// In a real app, this would be memoized or fetched less frequently.
-let cachedReviewers: Reviewer[] | null = null;
-
-// Invalidate cache when reviewer data changes
-function invalidateReviewerCache() {
-    console.log("Reviewer cache invalidated.");
-    cachedReviewers = null;
-}
+import { Reviewer } from "../types";
 
 export async function getReviewers(): Promise<Reviewer[]> {
-    if (cachedReviewers) {
-        console.log("Returning cached reviewers...");
-        return cachedReviewers;
-    }
-    console.log("Fetching reviewers from Firestore...");
+  console.log("Fetching reviewers from Firestore...");
+  try {
     const querySnapshot = await getDocs(query(collection(db, "reviewers"), orderBy("name")));
-    const reviewers = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Reviewer));
-    cachedReviewers = reviewers;
-    return reviewers;
-}
-
-export async function getReviewerById(id: string): Promise<Reviewer | null> {
-    console.log(`[getReviewerById] Attempting to fetch reviewer with ID: ${id}`);
-    const docRef = doc(db, "reviewers", id);
-    const docSnap = await getDoc(docRef);
-
-    if (docSnap.exists()) {
-        const reviewerData = { id: docSnap.id, ...docSnap.data() } as Reviewer;
-        console.log(`[getReviewerById] Reviewer found:`, reviewerData);
-        return reviewerData;
-    } else {
-        console.log(`[getReviewerById] No reviewer document found for ID: ${id}`);
-        return null;
-    }
-}
-
-export async function updateReviewerProfile(reviewerId: string, data: Partial<Pick<Reviewer, 'name' | 'turnaround' | 'experience' | 'genres'>>): Promise<void> {
-    const functions = getFunctions();
-    const updateProfile = httpsCallable(functions, 'updateReviewerProfile');
-    try {
-        await updateProfile(data);
-        invalidateReviewerCache();
-        console.log(`Profile update function called for reviewer ${reviewerId}`);
-    } catch (error: unknown) {
-        console.error("Error calling updateReviewerProfile Cloud Function:", error);
-        let errorMessage = "An unknown error occurred.";
-        if (error instanceof Error) {
-            errorMessage = error.message;
-        } else if (typeof error === "object" && error !== null && "message" in error) {
-            errorMessage = (error as { message: string }).message;
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Reviewer));
+  } catch (error) {
+    console.log("Failed to fetch reviewers, returning empty array:", error);
+    // Return demo data for emulator mode
+    const isEmulatorMode = process.env.NODE_ENV === 'development' && 
+                          process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST;
+    
+    if (isEmulatorMode) {
+      return [
+        { 
+          id: 'demo-reviewer-1', 
+          name: 'Demo Reviewer 1', 
+          email: 'reviewer1@test.com', 
+          bio: 'Demo reviewer bio',
+          genres: ['Pop', 'Rock/Indie'],
+          rating: 4.5,
+          totalReviews: 10,
+          avatarUrl: '/USETHIS.png'
+        },
+        { 
+          id: 'demo-reviewer-2', 
+          name: 'Demo Reviewer 2', 
+          email: 'reviewer2@test.com', 
+          bio: 'Another demo reviewer bio',
+          genres: ['Hip-Hop/R&B', 'Electronic'],
+          rating: 4.8,
+          totalReviews: 15,
+          avatarUrl: '/USETHIS.png'
         }
-        throw new Error(`Failed to update reviewer profile: ${errorMessage}`);
+      ] as Reviewer[];
     }
-}
-
-export async function addPackage(reviewerId: string, packageData: Omit<ReviewPackage, 'id'>): Promise<ReviewPackage> {
-    const functions = getFunctions();
-    const addPkg = httpsCallable(functions, 'addPackage');
-    try {
-        const result = await addPkg(packageData);
-        invalidateReviewerCache();
-        console.log(`Add package function called for reviewer ${reviewerId}`);
-        // The backend function now returns the full package object with the new ID
-        return result.data as ReviewPackage;
-    } catch (error: unknown) {
-        console.error("Error calling addPackage Cloud Function:", error);
-        let errorMessage = "An unknown error occurred.";
-        if (error instanceof Error) {
-            errorMessage = error.message;
-        } else if (typeof error === "object" && error !== null && "message" in error) {
-            errorMessage = (error as { message: string }).message;
-        }
-        throw new Error(`Failed to add package: ${errorMessage}`);
-    }
-}
-
-export async function updatePackage(reviewerId: string, updatedPackage: ReviewPackage): Promise<void> {
-    const functions = getFunctions();
-    const updatePkg = httpsCallable(functions, 'updatePackage');
-    try {
-        // Pass the entire package, including its ID, to the backend function
-        await updatePkg(updatedPackage);
-        invalidateReviewerCache();
-        console.log(`Update package function called for package ${updatedPackage.id}`);
-    } catch (error: unknown) {
-        console.error("Error calling updatePackage Cloud Function:", error);
-        let errorMessage = "An unknown error occurred.";
-        if (error instanceof Error) {
-            errorMessage = error.message;
-        } else if (typeof error === "object" && error !== null && "message" in error) {
-            errorMessage = (error as { message: string }).message;
-        }
-        throw new Error(`Failed to update package: ${errorMessage}`);
-    }
-}
-
-export async function deletePackage(reviewerId: string, packageId: string): Promise<void> {
-    const functions = getFunctions();
-    const deletePkg = httpsCallable(functions, 'deletePackage');
-    try {
-        await deletePkg({ packageId });
-        invalidateReviewerCache();
-        console.log(`Delete package function called for package ${packageId}`);
-    } catch (error: unknown) {
-        console.error("Error calling deletePackage Cloud Function:", error);
-        let errorMessage = "An unknown error occurred.";
-        if (error instanceof Error) {
-            errorMessage = error.message;
-        } else if (typeof error === "object" && error !== null && "message" in error) {
-            errorMessage = (error as { message: string }).message;
-        }
-        throw new Error(`Failed to delete package: ${errorMessage}`);
-    }
-}
-
-export async function getReviewsByReviewer(reviewerId: string): Promise<Review[]> {
-    console.log(`Fetching reviews for reviewer ${reviewerId}...`);
-    const reviewsCol = collection(db, "reviews");
-    const q = query(reviewsCol, where("reviewerId", "==", reviewerId), orderBy("createdAt", "desc"));
-    const querySnapshot = await getDocs(q);
-    const reviews = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-    } as Review));
-    return reviews;
+    return [];
+  }
 }

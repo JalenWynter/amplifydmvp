@@ -107,7 +107,7 @@ export default function VideoRecorder({
         setIsUploading(true);
         try {
           const videoFile = new File([videoBlob], `video-feedback-${Date.now()}.webm`, { type: 'video/webm' });
-          const uploadedUrl = await uploadFile(videoFile);
+          const uploadedUrl = await uploadFile(videoFile, `video-feedback/${Date.now()}-${videoFile.name}`);
           setVideoUrl(uploadedUrl);
           onRecordingComplete?.(uploadedUrl);
           toast({

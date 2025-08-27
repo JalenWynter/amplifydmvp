@@ -21,7 +21,29 @@ export async function getRecentActivityEvents(count: number): Promise<ActivityEv
         const querySnapshot = await getDocs(q);
         return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ActivityEvent));
     } catch (error) {
-        console.error("Error fetching recent activity events:", error);
+        console.log("Failed to fetch activity events, returning demo data:", error);
+        // Return demo data for emulator mode
+        const isEmulatorMode = process.env.NODE_ENV === 'development' && 
+                              process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST;
+        
+        if (isEmulatorMode) {
+            return [
+                {
+                    id: 'demo1',
+                    type: 'user_registration',
+                    timestamp: new Date().toISOString(),
+                    userEmail: 'demo@test.com',
+                    details: { action: 'User registered' }
+                },
+                {
+                    id: 'demo2',
+                    type: 'submission_created',
+                    timestamp: new Date(Date.now() - 3600000).toISOString(),
+                    userEmail: 'artist@test.com',
+                    details: { action: 'Music submission created' }
+                }
+            ] as ActivityEvent[];
+        }
         return [];
     }
 }

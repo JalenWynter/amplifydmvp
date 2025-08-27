@@ -1,37 +1,12 @@
 
 // This file contains client-side functions for interacting with Referral data.
-import { collection, query, orderBy, where, getDocs } from "firebase/firestore";
+import { collection, getDocs, doc, addDoc, query, orderBy, where } from "firebase/firestore";
 import { db } from "./client";
-import { httpsCallable } from "firebase/functions";
-import { getFirebaseFunctions } from "./client";
-import { REFERRAL_CODE_STATUS, REFERRAL_EARNING_STATUS } from '../constants';
-import type { ReferralCode, ReferralEarning, ReferralStats, User } from "@/lib/types";
-import { getUsers } from './users'; // Assuming getUsers is in users.ts
-
-
-
-export async function createReferralCode(associatedUser: string, referrerId: string): Promise<{ success: boolean, code: string, message: string }> {
-    console.log(`Calling createReferralCode Cloud Function for ${associatedUser}...`);
-    const functions = getFirebaseFunctions();
-    const createReferralCodeCallable = httpsCallable(functions, 'createReferralCode');
-
-    try {
-        const result = await createReferralCodeCallable({ associatedUser, referrerId });
-        return result.data as { success: boolean, code: string, message: string };
-    } catch (error: unknown) {
-        console.error("Error calling createReferralCode Cloud Function:", error);
-        let errorMessage = "An unknown error occurred.";
-        if (error instanceof Error) {
-            errorMessage = error.message;
-        } else if (typeof error === "object" && error !== null && "message" in error) {
-            errorMessage = (error as { message: string }).message;
-        }
-        throw new Error(`Failed to create referral code: ${errorMessage}`);
-    }
-}
+import { ReferralCode, ReferralEarning, ReferralStats, User } from "../types";
+import { REFERRAL_CODE_STATUS } from '../constants';
 
 export async function getReferralCodes(): Promise<ReferralCode[]> {
-    console.log("Fetching all referral codes from Firestore...");
+    console.log("Fetching referral codes from Firestore...");
     const codesCol = collection(db, "referralCodes");
     const q = query(codesCol, orderBy("createdAt", "desc"));
     const querySnapshot = await getDocs(q);
@@ -56,6 +31,30 @@ export async function getAllReferralCodes(): Promise<ReferralCode[]> {
     } as ReferralCode));
     
     return codes;
+}
+
+export async function createReferralCode(associatedUser: string, referrerId: string): Promise<ReferralCode> {
+    console.log(`Creating referral code for ${associatedUser}...`);
+    
+    // Generate a random 8-character code
+    const code = Math.random().toString(36).substring(2, 10).toUpperCase();
+    
+    const newCode: Omit<ReferralCode, 'id'> = {
+        code,
+        associatedUser,
+        referrerId,
+        status: REFERRAL_CODE_STATUS.ACTIVE,
+        createdAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
+    };
+    
+    try {
+        const docRef = await addDoc(collection(db, "referralCodes"), newCode);
+        return { id: docRef.id, ...newCode };
+    } catch (error) {
+        console.error("Error creating referral code:", error);
+        throw new Error("Failed to create referral code");
+    }
 }
 
 export async function getReferralCodesByReferrer(referrerId: string): Promise<ReferralCode[]> {
@@ -150,7 +149,15 @@ export async function getUserReferralHistory(userId: string): Promise<{
 
 export async function getReferralTrackingChain(userId: string): Promise<any> {
     console.log(`Fetching referral tracking chain for user ${userId}...`);
-    // This is a placeholder. Actual implementation would involve
-    // traversing referral relationships in Firestore.
-    return {};
+    
+    // This would fetch the complete referral chain for a user
+    // For now, return a basic structure
+    return {
+        userInfo: null,
+        referrer: null,
+        referralCode: null,
+        generatedCodes: [],
+        referredUsers: [],
+        earningsReceived: []
+    };
 }

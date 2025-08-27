@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { DollarSign, Banknote, Users, CreditCard, TrendingUp } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
-import { getFinancialStats, getPayouts, getTransactionStats } from "@/lib/firebase/services";
+import { getPayouts } from "@/lib/firebase/services";
+import { getFinancialStats, getTransactionStats } from "@/lib/firebase/admin/services";
 import { FinancialStats, Payout } from '@/lib/types';
 import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";

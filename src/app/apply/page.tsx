@@ -57,6 +57,9 @@ export default async function ApplyPage() {
         </CardHeader>
         <CardContent>
           <ApplyForm appSettings={appSettings} />
+          <p className="mt-4 text-center text-sm text-muted-foreground">
+            Already have an account? <Link href="/login" className="text-primary hover:underline">Login here</Link>
+          </p>
         </CardContent>
       </Card>
     </div>

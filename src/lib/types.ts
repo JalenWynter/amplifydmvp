@@ -234,6 +234,11 @@ export const SubmissionSchema = z.object({
   submittedAt: z.string().datetime(),
   reviewedAt: z.string().datetime().optional(),
   paymentIntentId: z.string(),
+  stripeSessionId: z.string().optional(),
+  amount: z.number().optional(), // Amount paid in cents
+  currency: z.string().optional(), // Currency (e.g., 'usd')
+  packageName: z.string().optional(), // Name of the review package
+  packageDescription: z.string().optional(), // Description of the review package
   trackingToken: z.string(), // Unique token for anonymous tracking
   contactEmail: z.string().email(), // Add contactEmail
   audioUrl: z.string().url(), // Add audioUrl
@@ -246,6 +251,9 @@ export const ReviewFormSchema = z.object({
   strengths: z.string().min(50, "Strengths must be at least 50 characters."),
   improvements: z.string().min(50, "Improvements must be at least 50 characters."),
   summary: z.string().min(50, "Summary must be at least 50 characters."),
+  audioFeedbackUrl: z.string().optional(),
+  videoFeedbackUrl: z.string().optional(),
+  isDraft: z.boolean().optional(),
 });
 export type ReviewFormData = z.infer<typeof ReviewFormSchema>;
 

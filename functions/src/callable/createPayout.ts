@@ -1,15 +1,21 @@
-import * as functions from 'firebase-functions';
+import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 
-export const createPayout = functions.https.onCall(async (data: { reviewerId: string; reviewer: { id: string; name: string; email: string; avatarUrl?: string; }; amount: number; amountInCents: number; paymentMethod: string; reviews?: any[]; }, context: functions.https.CallableContext) => {
-  if (!context.auth || (await admin.auth().getUser(context.auth.uid)).customClaims?.role !== 'admin') {
-    throw new functions.https.HttpsError('permission-denied', 'Only admins can create payouts.');
+export const createPayout = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Authentication required.');
   }
 
-  const { reviewerId, reviewer, amount, amountInCents, paymentMethod, reviews } = data;
+  // Get user role from Firestore
+  const userDoc = await admin.firestore().collection('users').doc(request.auth.uid).get();
+  if (!userDoc.exists || userDoc.data()?.role !== 'admin') {
+    throw new HttpsError('permission-denied', 'Only admins can create payouts.');
+  }
+
+  const { reviewerId, reviewer, amount, amountInCents, paymentMethod, reviews } = request.data;
 
   if (!reviewerId || !reviewer || !amount || !amountInCents || !paymentMethod) {
-    throw new functions.https.HttpsError('invalid-argument', 'Missing required payout fields.');
+    throw new HttpsError('invalid-argument', 'Missing required payout fields.');
   }
 
   try {
@@ -29,6 +35,6 @@ export const createPayout = functions.https.onCall(async (data: { reviewerId: st
     return { success: true, id: docRef.id, message: 'Payout created successfully.' };
   } catch (error) {
     console.error('Error creating payout:', error);
-    throw new functions.https.HttpsError('internal', 'Failed to create payout.', error);
+    throw new HttpsError('internal', 'Failed to create payout.');
   }
 });

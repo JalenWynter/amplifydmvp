@@ -44,26 +44,58 @@ export default function ReviewsPage() {
     const [reviewers, setReviewers] = useState<Reviewer[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchData = async () => {
             setIsLoading(true);
-            const [fetchedReviews, fetchedReviewers] = await Promise.all([
-                getAllReviews(),
-                getReviewers()
-            ]);
-            setReviews(fetchedReviews);
-            setReviewers(fetchedReviewers);
+            try {
+                // Try to get reviews from cloud function first
+                const fetchedReviewsData = await getAllReviews();
+                const fetchedReviewers = await getReviewers();
+                
+                // getAllReviews returns { reviews: Review[], pagination: any }
+                setReviews(fetchedReviewsData.reviews || []);
+                setReviewers(fetchedReviewers);
+                setError(null);
+            } catch (error) {
+                console.error('Error fetching data from cloud function:', error);
+                
+                // Fallback: try to get reviewers directly from Firestore
+                try {
+                    const fetchedReviewers = await getReviewers();
+                    setReviewers(fetchedReviewers);
+                    setReviews([]); // No reviews available via cloud function
+                    setError('Reviews temporarily unavailable. Please try again later.');
+                } catch (fallbackError) {
+                    console.error('Fallback error:', fallbackError);
+                    setReviews([]);
+                    setReviewers([]);
+                    setError('Failed to load data. Please check your connection and try again.');
+                }
+            }
             setIsLoading(false);
         };
         fetchData();
     }, []);
 
-    const filteredReviews = reviews.filter(review => {
+    const filteredReviews = (Array.isArray(reviews) ? reviews : []).filter(review => {
+        // Only show completed reviews (reviews that have all required fields)
+        const isCompleteReview = review.overallScore && 
+                                review.summary && 
+                                review.strengths && 
+                                review.improvements &&
+                                review.submissionDetails;
+        
+        if (!isCompleteReview) {
+            return false;
+        }
+
+        // Apply search filter
         const reviewer = reviewers.find(r => r.id === review.reviewerId);
         const reviewerName = reviewer?.name || '';
-        const artistName = review.submissionDetails.artistName;
-        const songTitle = review.submissionDetails.songTitle;
+        const artistName = review.submissionDetails?.artistName || '';
+        const songTitle = review.submissionDetails?.songTitle || '';
         
         const searchLower = searchTerm.toLowerCase();
         return (
@@ -92,7 +124,17 @@ export default function ReviewsPage() {
                 </div>
             </div>
 
-            {isLoading ? (
+            {error ? (
+                <div className="text-center py-12">
+                    <div className="text-red-500 mb-4">
+                        <h3 className="text-lg font-medium mb-2">Error Loading Reviews</h3>
+                        <p className="text-muted-foreground">{error}</p>
+                    </div>
+                    <Button onClick={() => window.location.reload()}>
+                        Try Again
+                    </Button>
+                </div>
+            ) : isLoading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {Array.from({ length: 6 }).map((_, i) => (
                         <ReviewCardSkeleton key={i} />

@@ -1,16 +1,22 @@
-import * as functions from 'firebase-functions';
+import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 import { v4 as uuidv4 } from 'uuid';
 
-export const createReferralCode = functions.https.onCall(async (data: { associatedUser: string; referrerId: string; }, context: functions.https.CallableContext) => {
-  if (!context.auth || (await admin.auth().getUser(context.auth.uid)).customClaims?.role !== 'admin') {
-    throw new functions.https.HttpsError('permission-denied', 'Only admins can create referral codes.');
+export const createReferralCode = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Authentication required.');
   }
 
-  const { associatedUser, referrerId } = data;
+  // Get user role from Firestore
+  const userDoc = await admin.firestore().collection('users').doc(request.auth.uid).get();
+  if (!userDoc.exists || userDoc.data()?.role !== 'admin') {
+    throw new HttpsError('permission-denied', 'Only admins can create referral codes.');
+  }
+
+  const { associatedUser, referrerId } = request.data;
 
   if (!associatedUser || !referrerId) {
-    throw new functions.https.HttpsError('invalid-argument', 'Missing associatedUser or referrerId.');
+    throw new HttpsError('invalid-argument', 'Missing associatedUser or referrerId.');
   }
 
   try {
@@ -26,6 +32,6 @@ export const createReferralCode = functions.https.onCall(async (data: { associat
     return { success: true, code: code, message: 'Referral code created successfully.' };
   } catch (error) {
     console.error('Error creating referral code:', error);
-    throw new functions.https.HttpsError('internal', 'Failed to create referral code.', error);
+    throw new HttpsError('internal', 'Failed to create referral code.');
   }
 });

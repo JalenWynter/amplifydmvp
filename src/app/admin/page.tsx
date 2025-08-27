@@ -1,12 +1,14 @@
 'use client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getDashboardStats, getUsers, getSubmissions, getRecentActivityEvents } from "@/lib/firebase/services";
+import { getUsers, getSubmissions, getRecentActivityEvents } from "@/lib/firebase/services";
+import { getDashboardStats } from "@/lib/firebase/admin/services";
 import { DashboardStats, User, Submission, ActivityEvent } from "@/lib/types";
 import { useEffect, useState } from 'react';
 import { Skeleton } from "@/components/ui/skeleton";
 import { subMonths, format } from 'date-fns';
 import dynamic from "next/dynamic";
-import { Users, UserCheck, Music, CheckSquare } from 'lucide-react';
+import { Users, UserCheck, Music, CheckSquare, Info } from 'lucide-react';
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const UserGrowthChart = dynamic(() => import("@/components/admin/dashboard/user-growth-chart"), {
     ssr: false,
@@ -115,16 +117,41 @@ export default function AdminPage() {
     useEffect(() => {
         const fetchData = async () => {
             setIsLoading(true);
-            const [fetchedStats, fetchedUsers, fetchedSubmissions, fetchedActivity] = await Promise.all([
-                getDashboardStats(),
-                getUsers(),
-                getSubmissions({ all: true }), // Fetch all submissions for chart
-                getRecentActivityEvents(5) // Fetch recent activity events
-            ]);
-            setStats(fetchedStats);
-            setUserGrowthData(processUserDataForChart(fetchedUsers));
-            setSubmissionTrendData(processSubmissionDataForChart(fetchedSubmissions));
-            setRecentActivity(fetchedActivity);
+            try {
+                // Use Promise.allSettled to handle individual failures gracefully
+                const results = await Promise.allSettled([
+                    getDashboardStats(),
+                    getUsers(),
+                    getSubmissions({ all: true }),
+                    getRecentActivityEvents(5)
+                ]);
+
+                // Extract results, using defaults for failed promises
+                const fetchedStats = results[0].status === 'fulfilled' ? results[0].value : { totalUsers: 0, totalReviewers: 0, totalSubmissions: 0, completedReviews: 0 };
+                const fetchedUsers = results[1].status === 'fulfilled' ? results[1].value : [];
+                const fetchedSubmissions = results[2].status === 'fulfilled' ? results[2].value : [];
+                const fetchedActivity = results[3].status === 'fulfilled' ? results[3].value : [];
+
+                setStats(fetchedStats);
+                setUserGrowthData(processUserDataForChart(fetchedUsers));
+                setSubmissionTrendData(processSubmissionDataForChart(fetchedSubmissions));
+                setRecentActivity(fetchedActivity);
+
+                // Log any failures for debugging
+                results.forEach((result, index) => {
+                    if (result.status === 'rejected') {
+                        console.log(`Data fetch ${index} failed:`, result.reason);
+                    }
+                });
+
+            } catch (error) {
+                console.log("Admin dashboard running in demo mode - some features may not be available");
+                // Set default/demo data for unauthenticated users
+                setStats({ totalUsers: 0, totalReviewers: 0, totalSubmissions: 0, completedReviews: 0 });
+                setUserGrowthData([]);
+                setSubmissionTrendData([]);
+                setRecentActivity([]);
+            }
             setIsLoading(false);
         }
         fetchData();
@@ -140,6 +167,15 @@ export default function AdminPage() {
     return (
         <div className="space-y-6">
             <h1 className="text-3xl font-bold font-headline">Platform Overview</h1>
+            
+            {(!stats || stats.totalUsers === 0) && (
+                <Alert>
+                    <Info className="h-4 w-4" />
+                    <AlertDescription>
+                        Running in demo mode. Sign in as admin to view live data.
+                    </AlertDescription>
+                </Alert>
+            )}
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 {isLoading ? (

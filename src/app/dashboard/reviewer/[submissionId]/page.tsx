@@ -12,8 +12,9 @@ import { useToast } from '@/hooks/use-toast';
 import { submitReview } from '@/lib/firebase/reviews';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Form } from '@/components/ui/form';
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import Link from 'next/link';
 
 export default function ReviewSubmissionPage() {
@@ -85,8 +86,11 @@ export default function ReviewSubmissionPage() {
     try {
       await submitReview({ 
         submissionId: submission.id, 
-        reviewData: values, 
-        overallScore: values.overallScore 
+        scores: values.scores, 
+        overallScore: values.overallScore,
+        strengths: values.strengths,
+        improvements: values.improvements,
+        summary: values.summary
       });
       toast({ 
         title: "Review Submitted!", 
@@ -151,9 +155,9 @@ export default function ReviewSubmissionPage() {
             Back to Dashboard
           </Link>
         </Button>
-        <div>
-          <h1 className="text-3xl font-bold font-headline">Review Submission</h1>
-          <p className="text-muted-foreground">Provide your detailed feedback for this track.</p>
+      <div>
+        <h1 className="text-3xl font-bold font-headline">Review Submission</h1>
+        <p className="text-muted-foreground">Provide your detailed feedback for this track.</p>
         </div>
       </div>
 
@@ -190,6 +194,91 @@ export default function ReviewSubmissionPage() {
         <form onSubmit={form.handleSubmit(handleReviewSubmit)} className="space-y-8">
           <ScoringChart form={form} scores={form.watch()} />
           
+          {/* Text Feedback Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Written Feedback</CardTitle>
+              <CardDescription>Provide detailed written feedback for the artist</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <FormField
+                control={form.control}
+                name="strengths"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Strengths</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="What are the strongest aspects of this track? What works well?"
+                        className="min-h-[120px]"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="improvements"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Areas for Improvement</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="What could be improved? What specific suggestions do you have?"
+                        className="min-h-[120px]"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="summary"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Overall Review Summary</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Provide a comprehensive summary of your review, including your overall assessment and key takeaways for the artist."
+                        className="min-h-[150px]"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="overallScore"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Overall Score (0-10)</FormLabel>
+                    <FormControl>
+                      <input
+                        type="number"
+                        min="0"
+                        max="10"
+                        step="0.5"
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        {...field}
+                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+          
           <div className="flex gap-4 pt-6">
             <Button 
               type="button" 
@@ -212,7 +301,7 @@ export default function ReviewSubmissionPage() {
               ) : (
                 'Submit Review'
               )}
-            </Button>
+          </Button>
           </div>
         </form>
       </Form>

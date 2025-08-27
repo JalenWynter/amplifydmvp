@@ -48,13 +48,13 @@ export default function ReviewsPage() {
             return;
         }
 
-        const fetchReviews = async () => {
-            setIsLoading(true);
+                const fetchReviews = async () => {
+                    setIsLoading(true);
             const fetchedReviews = await getReviewsByReviewer(currentUser.id);
-            setReviews(fetchedReviews);
-            setIsLoading(false);
-        }
-        fetchReviews();
+                    setReviews(fetchedReviews);
+                    setIsLoading(false);
+                }
+                fetchReviews();
     }, [currentUser, authLoading]);
 
     if (authLoading || isLoading) {
@@ -63,7 +63,7 @@ export default function ReviewsPage() {
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
         );
-    }
+            }
 
     if (!currentUser || currentUser.role !== 'reviewer') {
         return (

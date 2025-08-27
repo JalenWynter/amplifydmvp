@@ -48,14 +48,18 @@ const schemaObject = allFactorIds.reduce((acc, id) => {
   return acc;
 }, {} as Record<string, z.ZodNumber>);
 
-schemaObject.strengths = z.string().min(50, 'Please provide at least 50 characters on strengths.');
-schemaObject.improvements = z.string().min(50, 'Please provide at least 50 characters on areas for improvement.');
-schemaObject.summary = z.string().min(100, 'Please provide at least 100 characters for the overall review.');
-schemaObject.audioFeedbackUrl = z.string().optional();
-schemaObject.videoFeedbackUrl = z.string().optional();
-schemaObject.isDraft = z.boolean().optional();
+// Add the required fields to the schema
+const baseSchema = {
+  ...schemaObject,
+  strengths: z.string().min(50, 'Please provide at least 50 characters on strengths.'),
+  improvements: z.string().min(50, 'Please provide at least 50 characters on areas for improvement.'),
+  summary: z.string().min(100, 'Please provide at least 100 characters for the overall review.'),
+  audioFeedbackUrl: z.string().optional(),
+  videoFeedbackUrl: z.string().optional(),
+  isDraft: z.boolean().optional(),
+};
 
-export const reviewSchema = z.object(schemaObject);
+export const reviewSchema = z.object(baseSchema);
 
 interface ScoringChartProps {
     form: ReturnType<typeof useForm<ReviewFormData>>;
@@ -75,47 +79,47 @@ export default function ScoringChart({ form, scores }: ScoringChartProps) {
                 </CardTitle>
             </CardHeader>
             <CardContent className="px-6">
-                <Accordion type="multiple" defaultValue={Object.keys(scoringFactors)} className="w-full">
-                    {Object.entries(scoringFactors).map(([category, factors]) => (
-                        <AccordionItem value={category} key={category}>
+        <Accordion type="multiple" defaultValue={Object.keys(scoringFactors)} className="w-full">
+            {Object.entries(scoringFactors).map(([category, factors]) => (
+                <AccordionItem value={category} key={category}>
                             <AccordionTrigger className="text-lg font-semibold hover:no-underline">
                                 {category} ({factors.length} criteria)
                             </AccordionTrigger>
                             <AccordionContent className="space-y-6 pt-6">
                                 <div className="space-y-6">
-                                    {factors.map(factor => (
-                                        <FormField
-                                            key={factor.id}
+                        {factors.map(factor => (
+                            <FormField
+                                key={factor.id}
                                             name={factor.id as keyof ReviewFormData}
-                                            control={form.control}
-                                            render={({ field }) => (
+                                control={form.control}
+                                render={({ field }) => (
                                                 <div className="space-y-3">
                                                     <Label htmlFor={factor.id} className="text-base font-medium">
                                                         {factor.label}
                                                     </Label>
-                                                    <div className="flex items-center gap-4">
-                                                        <Slider
-                                                            id={factor.id}
-                                                            min={0}
-                                                            max={10}
-                                                            step={0.5}
+                                        <div className="flex items-center gap-4">
+                                        <Slider
+                                            id={factor.id}
+                                            min={0}
+                                            max={10}
+                                            step={0.5}
                                                             value={[field.value || 5]}
-                                                            onValueChange={(val) => field.onChange(val[0])}
-                                                            className="flex-1"
-                                                        />
+                                            onValueChange={(val) => field.onChange(val[0])}
+                                            className="flex-1"
+                                        />
                                                         <span className="w-16 text-center font-mono text-lg font-bold text-primary bg-primary/10 px-3 py-2 rounded min-w-0">
                                                             {(scores[factor.id as keyof ReviewFormData] as number ?? 5).toFixed(1)}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        />
-                                    ))}
+                                        </span>
+                                        </div>
+                                    </div>
+                                )}
+                            />
+                        ))}
                                 </div>
-                            </AccordionContent>
-                        </AccordionItem>
-                    ))}
-                </Accordion>
+                    </AccordionContent>
+                </AccordionItem>
+            ))}
+        </Accordion>
             </CardContent>
         </Card>
 
@@ -159,13 +163,13 @@ export default function ScoringChart({ form, scores }: ScoringChartProps) {
                 <CardTitle>Written Feedback</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-                <FormField
-                    control={form.control}
-                    name="strengths"
-                    render={({ field }) => (
-                        <div className="space-y-2">
-                            <Label htmlFor="strengths" className="text-lg font-semibold">Strengths</Label>
-                            <FormControl>
+            <FormField
+                control={form.control}
+                name="strengths"
+                render={({ field }) => (
+                    <div className="space-y-2">
+                        <Label htmlFor="strengths" className="text-lg font-semibold">Strengths</Label>
+                        <FormControl>
                                 <Textarea 
                                     id="strengths" 
                                     rows={4} 
@@ -173,22 +177,22 @@ export default function ScoringChart({ form, scores }: ScoringChartProps) {
                                     className="resize-y" 
                                     {...field} 
                                 />
-                            </FormControl>
-                            <FormMessage />
+                        </FormControl>
+                        <FormMessage />
                             <div className="text-xs text-muted-foreground">
                                 {field.value?.length || 0} characters (minimum 50 required)
                             </div>
-                        </div>
-                    )}
-                />
+                    </div>
+                )}
+            />
                 
-                <FormField
-                    control={form.control}
-                    name="improvements"
-                    render={({ field }) => (
-                        <div className="space-y-2">
-                            <Label htmlFor="improvements" className="text-lg font-semibold">Areas for Improvement</Label>
-                            <FormControl>
+             <FormField
+                control={form.control}
+                name="improvements"
+                render={({ field }) => (
+                     <div className="space-y-2">
+                        <Label htmlFor="improvements" className="text-lg font-semibold">Areas for Improvement</Label>
+                        <FormControl>
                                 <Textarea 
                                     id="improvements" 
                                     rows={4} 
@@ -196,37 +200,37 @@ export default function ScoringChart({ form, scores }: ScoringChartProps) {
                                     className="resize-y" 
                                     {...field} 
                                 />
-                            </FormControl>
-                            <FormMessage />
+                        </FormControl>
+                        <FormMessage />
                             <div className="text-xs text-muted-foreground">
                                 {field.value?.length || 0} characters (minimum 50 required)
                             </div>
-                        </div>
-                    )}
-                />
-                
-                <FormField
-                    control={form.control}
-                    name="summary"
-                    render={({ field }) => (
-                        <div className="space-y-2">
-                            <Label htmlFor="summary" className="text-lg font-semibold">Overall Review</Label>
-                            <FormControl>
-                                <Textarea 
-                                    id="summary" 
-                                    rows={6} 
-                                    placeholder="Provide a comprehensive overall review of this track. Include your thoughts on the production, performance, commercial potential, and any other relevant aspects. This will be the main review text that appears on the artist's review page."
+                    </div>
+                )}
+            />
+            
+            <FormField
+                control={form.control}
+                name="summary"
+                render={({ field }) => (
+                     <div className="space-y-2">
+                        <Label htmlFor="summary" className="text-lg font-semibold">Overall Review</Label>
+                        <FormControl>
+                            <Textarea 
+                                id="summary" 
+                                rows={6} 
+                                placeholder="Provide a comprehensive overall review of this track. Include your thoughts on the production, performance, commercial potential, and any other relevant aspects. This will be the main review text that appears on the artist's review page."
                                     className="min-h-[150px] resize-y"
-                                    {...field} 
-                                />
-                            </FormControl>
-                            <FormMessage />
-                            <div className="text-xs text-muted-foreground">
-                                {field.value?.length || 0} characters (minimum 100 required)
-                            </div>
+                                {...field} 
+                            />
+                        </FormControl>
+                        <FormMessage />
+                        <div className="text-xs text-muted-foreground">
+                            {field.value?.length || 0} characters (minimum 100 required)
                         </div>
-                    )}
-                />
+                    </div>
+                )}
+            />
             </CardContent>
         </Card>
     </div>

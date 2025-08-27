@@ -17,8 +17,9 @@ import { useToast } from "@/hooks/use-toast"
 import { useState } from "react"
 import { Loader2 } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
-import { signInWithEmailAndPassword } from "firebase/auth"
-import { auth } from "@/lib/firebase/client"
+import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth"
+import { auth, db } from "@/lib/firebase/client"
+import { doc, getDoc } from "firebase/firestore"
 import { useRouter } from "next/navigation"
 
 const formSchema = z.object({
@@ -65,17 +66,51 @@ export default function LoginForm() {
     }
   }
 
-  const handleGoogleSignIn = () => {
-     setIsLoading(true)
-    // Simulate Google login
-    setTimeout(() => {
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true)
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      
+      // Check if user exists in our database
+      const userDoc = await getDoc(doc(db, "users", result.user.uid));
+      
+      if (!userDoc.exists()) {
+        // User doesn't exist in our database - sign them out and redirect to apply
+        await auth.signOut();
+        toast({
+          title: "Account Not Found",
+          description: "Please apply for an account first.",
+          variant: "destructive",
+        });
+        router.push('/apply');
+        return;
+      }
+      
       toast({
-        title: "Login Failed",
-        description: "Google Sign-In is not implemented in this demo.",
+        title: "Login Successful!",
+        description: "Redirecting you to your dashboard.",
+      });
+      router.push('/dashboard');
+    } catch (error: unknown) {
+      let description = "An unknown error occurred. Please try again.";
+      if (error instanceof Error) {
+        if (error.code === 'auth/popup-closed-by-user') {
+          description = "Sign-in was cancelled.";
+        } else if (error.code === 'auth/popup-blocked') {
+          description = "Sign-in popup was blocked. Please allow popups for this site.";
+        } else {
+          description = error.message;
+        }
+      }
+      toast({
+        title: "Google Sign-In Failed",
+        description: description,
         variant: "destructive",
-      })
+      });
+    } finally {
       setIsLoading(false)
-    }, 1500)
+    }
   }
 
   return (

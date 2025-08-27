@@ -1,69 +1,92 @@
-import * as functions from 'firebase-functions';
-import * as admin from 'firebase-admin';
+import * as functions from "firebase-functions";
+import * as admin from "firebase-admin";
 import Stripe from 'stripe';
+// import { sendEmail } from "../utils/emailService"; // TODO: Fix email service import
 
-const stripe = new Stripe(functions.config().stripe.secret_key, {});
+const db = admin.firestore();
 
-export const stripeWebhook = functions.https.onRequest(async (request: functions.https.Request, response: functions.Response) => {
-  const sig = request.headers['stripe-signature'];
-  let event: Stripe.Event;
+export const stripeWebhook = functions.https.onRequest(async (req, res) => {
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+        apiVersion: '2025-06-30.basil',
+    });
+    const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET || 'test_webhook_secret';
 
-  try {
-    event = stripe.webhooks.constructEvent(request.rawBody, sig as string, functions.config().stripe.webhook_secret);
-  } catch (err: any) {
-    console.error(`Webhook Error: ${err.message}`);
-    response.status(400).send(`Webhook Error: ${err.message}`);
+    let event: Stripe.Event;
+
+    try {
+        const sig = req.headers['stripe-signature'];
+        if (typeof sig !== 'string') {
+            console.error(`Webhook Error: Invalid stripe-signature header.`);
+            res.status(400).send(`Webhook Error: Invalid stripe-signature header.`);
+            return;
+        }
+        event = stripe.webhooks.constructEvent(req.rawBody, sig, endpointSecret);
+    } catch (err: unknown) {
+        console.error(`Webhook signature verification failed: ${err instanceof Error ? err.message : String(err)}`);
+        res.status(400).send(`Webhook Error: ${err instanceof Error ? err.message : String(err)}`);
+        return;
+    }
+
+    // Handle the event
+    if (event.type === 'checkout.session.completed') {
+        const session = event.data.object as Stripe.Checkout.Session;
+        console.log(`Checkout session completed: ${session.id}`);
+
+        const { artistName, songTitle, contactEmail, audioUrl, genre, reviewerId, packageId } = session.metadata || {};
+        const paymentIntentId = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id;
+
+        if (!artistName || !songTitle || !contactEmail || !audioUrl || !genre || !reviewerId || !packageId || !paymentIntentId) {
+            console.error("Missing metadata in Stripe session:", session.metadata);
+            res.status(400).send("Missing required metadata.");
+            return;
+        }
+
+        try {
+            const submissionsRef = db.collection("submissions");
+
+            // Generate a unique tracking token
+            const trackingToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+
+            await submissionsRef.add({
+                artistName,
+                songTitle,
+                uploaderEmail: contactEmail,
+                songUrl: audioUrl,
+                genre,
+                reviewerId,
+                packageId,
+                paymentIntentId,
+                trackingToken,
+                status: "pending", // Initial status
+                submittedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+
+            console.log(`Submission created for ${songTitle} by ${artistName} with tracking token ${trackingToken}`);
+
+            // TODO: Send confirmation email to uploader
+            console.log(`Submission confirmed: ${songTitle} by ${artistName} with tracking token ${trackingToken}`);
+
+            // Send notification email to reviewer
+            const reviewerDoc = await db.collection("reviewers").doc(reviewerId).get();
+            if (reviewerDoc.exists) {
+                const reviewerData = reviewerDoc.data();
+                const reviewerEmail = reviewerData?.email;
+                const reviewerName = reviewerData?.name || "Reviewer";
+
+                if (reviewerEmail) {
+                    // TODO: Send email notification to reviewer
+                    console.log(`Reviewer ${reviewerName} (${reviewerEmail}) notified of new submission: ${songTitle} by ${artistName}`);
+                }
+            }
+
+        } catch (error) {
+            console.error("Error creating submission in Firestore or sending email:", error);
+            res.status(500).send("Internal Server Error");
+            return;
+        }
+    }
+
+    // Return a 200 response to acknowledge receipt of the event
+    res.json({ received: true });
     return;
-  }
-
-  // Handle the event
-  switch (event.type) {
-    case 'checkout.session.completed':
-      const session = event.data.object as Stripe.Checkout.Session;
-      console.log('Checkout Session Completed:', session.id);
-
-      // Extract metadata from the session
-      const metadata = session.metadata;
-      if (!metadata) {
-        console.error('Metadata missing from checkout session.');
-        response.status(400).send('Metadata missing.');
-        return;
-      }
-
-      const { artistName, songTitle, contactEmail, audioUrl, genre, reviewerId, packageId } = metadata;
-
-      if (!artistName || !songTitle || !contactEmail || !audioUrl || !genre || !reviewerId || !packageId) {
-        console.error('Missing required metadata fields for submission.', metadata);
-        response.status(400).send('Missing required metadata fields.');
-        return;
-      }
-
-      try {
-        await admin.firestore().collection('submissions').add({
-          artistName,
-          songTitle,
-          contactEmail,
-          audioUrl,
-          genre,
-          reviewerId,
-          packageId,
-          status: 'Pending Review',
-          submittedAt: admin.firestore.FieldValue.serverTimestamp(),
-          paymentIntentId: session.payment_intent, // Store payment intent ID
-          stripeCheckoutSessionId: session.id, // Store checkout session ID
-        });
-        console.log('Submission created in Firestore.');
-      } catch (firestoreError) {
-        console.error('Error writing submission to Firestore:', firestoreError);
-        response.status(500).send('Error writing submission to Firestore.');
-        return;
-      }
-      break;
-    // ... handle other event types
-    default:
-      console.log(`Unhandled event type ${event.type}`);
-  }
-
-  // Return a 200 response to acknowledge receipt of the event
-  response.json({ received: true });
 });

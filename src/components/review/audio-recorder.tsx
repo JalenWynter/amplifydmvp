@@ -65,7 +65,7 @@ export default function AudioRecorder({
         setIsUploading(true);
         try {
           const audioFile = new File([audioBlob], `audio-feedback-${Date.now()}.webm`, { type: 'audio/webm' });
-          const uploadedUrl = await uploadFile(audioFile);
+          const uploadedUrl = await uploadFile(audioFile, `audio-feedback/${Date.now()}-${audioFile.name}`);
           setAudioUrl(uploadedUrl);
           onRecordingComplete?.(uploadedUrl);
           toast({

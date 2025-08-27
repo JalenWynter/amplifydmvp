@@ -1,17 +1,11 @@
 const admin = require('firebase-admin');
 
-// Production Firebase Admin SDK initialization
-// Comment out emulator settings for production
-// process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080';
-// process.env.FIREBASE_AUTH_EMULATOR_HOST = '127.0.0.1:9099';
+// Emulator settings for development
+process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080';
+process.env.FIREBASE_AUTH_EMULATOR_HOST = '127.0.0.1:9099';
 
-// Initialize Firebase Admin SDK for production
-// You need to download service account key from Firebase Console
-// Project Settings > Service Accounts > Generate New Private Key
-const serviceAccount = require('./serviceAccountKey.json');
-
+// Initialize Firebase Admin SDK for emulators
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
   projectId: 'amplifydmvp',
 });
 
@@ -49,7 +43,7 @@ async function seedFirestore() {
             role: 'admin',
             status: 'Active',
             joinedAt: new Date('2024-05-01T00:00:00Z').toISOString(),
-            avatarUrl: 'https://placehold.co/40x40.png',
+            avatarUrl: '/USETHIS.png',
         },
         {
             id: userMap['brenda.lee@amplifyd.com'],
@@ -58,25 +52,16 @@ async function seedFirestore() {
             role: 'reviewer',
             status: 'Active',
             joinedAt: new Date('2024-06-15T00:00:00Z').toISOString(),
-            avatarUrl: 'https://placehold.co/40x40.png',
-        },
-        {
-            id: userMap['alex.chen@amplifyd.com'],
-            email: 'alex.chen@amplifyd.com',
-            name: 'Alex "Synth" Chen',
-            role: 'reviewer',
-            status: 'Active',
-            joinedAt: new Date('2024-06-20T00:00:00Z').toISOString(),
-            avatarUrl: 'https://placehold.co/40x40.png',
+            avatarUrl: '/USETHIS.png',
         },
         {
             id: userMap['cosmic@dreamer.com'],
             email: 'cosmic@dreamer.com',
             name: 'Cosmic Dreamer',
-            role: 'artist',
+            role: 'uploader',
             status: 'Active',
             joinedAt: new Date('2024-07-28T00:00:00Z').toISOString(),
-            avatarUrl: 'https://placehold.co/40x40.png',
+            avatarUrl: '/USETHIS.png',
         },
     ];
 
@@ -84,26 +69,14 @@ async function seedFirestore() {
         {
             id: userMap['brenda.lee@amplifyd.com'],
             name: 'Brenda "Vocals" Lee',
-            avatarUrl: 'https://placehold.co/150x150.png',
+            avatarUrl: '/USETHIS.png',
             dataAiHint: 'woman portrait',
             turnaround: '3-5 days',
             genres: ['Pop', 'R&B', 'Vocal Performance'],
-            experience: 'With over 15 years in the industry...',
+            experience: 'With over 15 years in the industry, I\'ve had the privilege of working on multiple gold-certified records. My expertise lies in indie pop and synthwave, and I specialize in mixing and mastering.',
             packages: [
-                { id: 'pkg_01_01', name: 'Standard Written Review', priceInCents: 2500, description: 'Detailed written feedback...', trackCount: 1, formats: ['written', 'chart'] },
-                { id: 'pkg_01_02', name: 'Audio Commentary', priceInCents: 4000, description: 'A full audio breakdown...', trackCount: 1, formats: ['audio', 'chart'] }
-            ]
-        },
-        {
-            id: userMap['alex.chen@amplifyd.com'],
-            name: 'Alex "Synth" Chen',
-            avatarUrl: 'https://placehold.co/150x150.png',
-            dataAiHint: 'man portrait',
-            turnaround: '2-4 days',
-            genres: ['Electronic', 'Synthwave', 'Sound Design'],
-            experience: 'As an electronic music producer...',
-            packages: [
-                { id: 'pkg_02_01', name: 'Synth & Sound Design Checkup', priceInCents: 3000, description: 'Deep dive into your sound design...', trackCount: 1, formats: ['written', 'chart'] }
+                { id: 'pkg_01_01', name: 'Standard Written Review', priceInCents: 2500, description: 'Detailed written feedback on your track.', trackCount: 1, formats: ['written', 'chart'] },
+                { id: 'pkg_01_02', name: 'Audio Commentary', priceInCents: 4000, description: 'A full audio breakdown of your song.', trackCount: 1, formats: ['audio', 'chart'] }
             ]
         }
     ];
@@ -121,6 +94,52 @@ async function seedFirestore() {
             transactionId: 'txn_xyz789',
         },
     ];
+
+    const reviewsData = [
+        {
+            id: 'review_001',
+            reviewerId: userMap['brenda.lee@amplifyd.com'],
+            submissionId: 'submission_001',
+            overallScore: 8.5,
+            scores: {
+                originality: 8,
+                structure: 9,
+                melody: 8,
+                lyrics: 7,
+                vocal_performance: 9,
+                instrumental_performance: 8,
+                energy: 8,
+                technical_skill: 7,
+                sound_quality: 8,
+                mixing: 8,
+                sound_design: 7,
+                mastering: 8,
+                commercial_potential: 8,
+                target_audience: 8,
+                branding: 7,
+                uniqueness: 8
+            },
+            strengths: 'This track demonstrates excellent vocal performance and strong melodic structure. The production quality is professional and the arrangement keeps the listener engaged throughout.',
+            improvements: 'The lyrics could be more specific and personal to create a stronger emotional connection. Consider adding more dynamic range in the bridge section.',
+            summary: 'A solid pop track with strong commercial potential. The vocal performance is the standout element, supported by clean production and catchy melodies.',
+            createdAt: new Date('2024-07-29T10:00:00Z').toISOString(),
+            submissionDetails: {
+                artistName: 'Cosmic Dreamer',
+                songTitle: 'Starlight Echoes'
+            }
+        }
+    ];
+
+    const appSettingsData = {
+        id: 'app-config',
+        applicationMode: 'open',
+        maintenanceMode: false,
+        maxFileSize: 50 * 1024 * 1024, // 50MB
+        allowedFileTypes: ['mp3', 'wav', 'aiff', 'm4a'],
+        reviewTurnaroundTime: '3-5 days',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+    };
 
     // ... (keep other data as is, or update with dynamic UIDs if needed)
 
@@ -154,6 +173,8 @@ async function seedFirestore() {
     await seedCollection('users', usersData);
     await seedCollection('reviewers', reviewersData);
     await seedCollection('submissions', submissionsData, null); // Let Firestore auto-generate IDs
+    await seedCollection('reviews', reviewsData);
+    await seedCollection('settings', [appSettingsData]);
 
     // Seed other collections as before
     // ...

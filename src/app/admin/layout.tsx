@@ -117,7 +117,7 @@ const NavContent = ({ pathname }: { pathname: string }) => (
         <div className="mt-auto border-t p-4">
             <div className='flex items-center gap-3 mb-4'>
                     <Avatar className="h-9 w-9">
-                    <AvatarImage src="https://placehold.co/40x40.png" alt="Admin User" data-ai-hint="man portrait" />
+                    <AvatarImage src="/USETHIS.png" alt="Admin User" data-ai-hint="man portrait" />
                     <AvatarFallback>A</AvatarFallback>
                 </Avatar>
                 <div>
@@ -144,6 +144,28 @@ export default function AdminLayout({
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        // Check if we're in development with emulators for testing
+        const isEmulatorMode = process.env.NODE_ENV === 'development' && 
+                              process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST;
+        
+        if (isEmulatorMode) {
+            // In emulator mode, check if user is authenticated but don't require admin role
+            const unsubscribe = onAuthStateChanged(auth, async (user) => {
+                if (!user) {
+                    // No user is signed in, redirect to login
+                    router.push('/login');
+                    return;
+                }
+                
+                // User is signed in, allow access in emulator mode
+                console.log("Emulator mode: User authenticated, allowing admin access");
+                setLoading(false);
+            });
+            
+            return () => unsubscribe();
+        }
+        
+        // Production mode - require admin role
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             if (!user) {
                 // No user is signed in, redirect to login

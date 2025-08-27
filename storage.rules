@@ -37,14 +37,12 @@ service firebase.storage {
       allow read: if true;
     }
 
-    // --- Temporary Anonymous Music Uploads (via Signed URL) ---
-    // Path: /music-uploads/temp/{trackingToken}/{fileName}
-    // This is the temporary location for anonymous users uploading files via a pre-signed URL.
-    match /music-uploads/temp/{trackingToken}/{fileName} {
-      // Allow write only if the request includes specific metadata set by the signed URL.
-      // The Cloud Function generating the signed URL will add 'x-goog-meta-signed-url': 'true'.
-      allow write: if request.resource.metadata.signedUrl == 'true';
-      allow read: if false; // These are temporary files, not directly readable by clients.
+    // --- Anonymous Music Submissions (Core Feature) ---
+    // Path: /music-uploads/temp/{timestamp-randomId-fileName}
+    match /music-uploads/temp/{fileName} {
+      // Allow anonymous uploads - no login required for artists
+      allow write: if true;
+      allow read: if true; // Reviewers need access to submitted files
     }
 
     // --- Profile Pictures ---

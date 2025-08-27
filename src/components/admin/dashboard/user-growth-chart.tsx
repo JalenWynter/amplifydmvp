@@ -1,51 +1,46 @@
 
 'use client';
 
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
-import {
-  ChartConfig,
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  ChartLegend,
-  ChartLegendContent,
-} from '@/components/ui/chart';
+import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
-const chartConfig = {
-  users: {
-    label: "New Users",
-    color: "hsl(var(--chart-2))",
-  },
-  reviewers: {
-    label: "New Reviewers",
-    color: "hsl(var(--chart-1))",
-  },
-} satisfies ChartConfig;
+interface UserGrowthChartProps {
+  data: { month: string; users: number; reviewers: number }[];
+}
 
-export default function UserGrowthChart({ data }: { data: { month: string; users: number; reviewers: number }[] }) {
+export default function UserGrowthChart({ data }: UserGrowthChartProps) {
   return (
-    <ChartContainer config={chartConfig} className="min-h-[200px] w-full h-80">
-      <BarChart data={data} accessibilityLayer>
-        <CartesianGrid vertical={false} />
+    <ResponsiveContainer width="100%" height={350}>
+      <LineChart data={data}>
         <XAxis
           dataKey="month"
+          stroke="#888888"
+          fontSize={12}
           tickLine={false}
-          tickMargin={10}
           axisLine={false}
         />
         <YAxis
+          stroke="#888888"
+          fontSize={12}
           tickLine={false}
           axisLine={false}
-          tickMargin={10}
+          tickFormatter={(value) => `${value}`}
         />
-        <ChartTooltip
-          cursor={false}
-          content={<ChartTooltipContent indicator="dot" />}
+        <Tooltip />
+        <Line
+          type="monotone"
+          dataKey="users"
+          stroke="#8884d8"
+          strokeWidth={2}
+          name="Total Users"
         />
-        <ChartLegend content={<ChartLegendContent />} />
-        <Bar dataKey="users" fill="var(--color-users)" radius={4} />
-        <Bar dataKey="reviewers" fill="var(--color-reviewers)" radius={4} />
-      </BarChart>
-    </ChartContainer>
+        <Line
+          type="monotone"
+          dataKey="reviewers"
+          stroke="#82ca9d"
+          strokeWidth={2}
+          name="Reviewers"
+        />
+      </LineChart>
+    </ResponsiveContainer>
   );
 }

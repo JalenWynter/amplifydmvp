@@ -1,15 +1,21 @@
-import * as functions from 'firebase-functions';
+import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 
-export const rejectApplication = functions.https.onCall(async (data: { applicationId: string; }, context: functions.https.CallableContext) => {
-  if (!context.auth || (await admin.auth().getUser(context.auth.uid)).customClaims?.role !== 'admin') {
-    throw new functions.https.HttpsError('permission-denied', 'Only admins can reject applications.');
+export const rejectApplication = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Authentication required.');
   }
 
-  const { applicationId } = data;
+  // Get user role from Firestore
+  const userDoc = await admin.firestore().collection('users').doc(request.auth.uid).get();
+  if (!userDoc.exists || userDoc.data()?.role !== 'admin') {
+    throw new HttpsError('permission-denied', 'Only admins can reject applications.');
+  }
+
+  const { applicationId } = request.data;
 
   if (!applicationId) {
-    throw new functions.https.HttpsError('invalid-argument', 'Application ID is required.');
+    throw new HttpsError('invalid-argument', 'Application ID is required.');
   }
 
   try {
@@ -24,6 +30,6 @@ export const rejectApplication = functions.https.onCall(async (data: { applicati
     return { success: true, message: 'Application rejected successfully.' };
   } catch (error) {
     console.error('Error rejecting application:', error);
-    throw new functions.https.HttpsError('internal', 'Failed to reject application.', error);
+    throw new HttpsError('internal', 'Failed to reject application.');
   }
 });

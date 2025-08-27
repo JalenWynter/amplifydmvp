@@ -1,35 +1,28 @@
 
 // This file contains client-side functions for interacting with Review data.
 import { collection, getDocs, doc, getDoc, addDoc, updateDoc, query, orderBy, where, writeBatch, limit } from "firebase/firestore";
-import { db } from "./client";
+import { httpsCallable } from "firebase/functions";
+import { db, getFirebaseFunctions } from "./client";
 import { SUBMISSION_STATUS } from '../constants';
 import type { Review, Submission } from '../types';
 import { getSubmissionById } from './submissions';
+import { Review, ReviewFormValues } from "../types";
 
-export async function submitReview(reviewData: Omit<Review, 'id' | 'createdAt' | 'submissionDetails'>): Promise<Review> {
-  console.log("Submitting review to Firestore...");
+export async function submitReview(reviewData: { 
+  submissionId: string; 
+  scores: Record<string, number>; 
+  overallScore: number; 
+  strengths: string; 
+  improvements: string; 
+  summary: string; 
+}): Promise<Review> {
+  console.log("Submitting review via cloud function...");
+  const functions = getFirebaseFunctions();
+  const submitReviewCallable = httpsCallable(functions, 'submitReview');
+  
   try {
-    const submission = await getSubmissionById(reviewData.submissionId);
-    if (!submission) {
-      throw new Error(`Submission with ID ${reviewData.submissionId} not found.`);
-    }
-
-    const batch = writeBatch(db);
-
-    const reviewRef = doc(collection(db, "reviews"));
-    const newReview: Omit<Review, 'id'> = {
-      ...reviewData,
-      createdAt: new Date().toISOString(),
-      submissionDetails: { artistName: submission.artistName, songTitle: submission.songTitle },
-    };
-    batch.set(reviewRef, newReview);
-
-    const submissionRef = doc(db, "submissions", reviewData.submissionId);
-    batch.update(submissionRef, { status: SUBMISSION_STATUS.REVIEWED, reviewedAt: new Date().toISOString() });
-
-    await batch.commit();
-
-    return { ...newReview, id: reviewRef.id };
+    const result = await submitReviewCallable(reviewData);
+    return result.data;
   } catch (error: unknown) {
     console.error("Error submitting review:", error);
     let errorMessage = "An unknown error occurred.";
@@ -54,16 +47,45 @@ export async function getReviewsByReviewer(reviewerId: string): Promise<Review[]
   return reviews;
 }
 
-export async function getAllReviews(): Promise<Review[]> {
-  console.log("Fetching all reviews from Firestore...");
-  const reviewsCol = collection(db, "reviews");
-  const q = query(reviewsCol, orderBy("createdAt", "desc"));
-  const querySnapshot = await getDocs(q);
-  const reviews = querySnapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
-  } as Review));
-  return reviews;
+export async function getAllReviews(limit: number = 50, offset: number = 0): Promise<{ reviews: Review[], pagination: any }> {
+  console.log("Fetching all reviews via cloud function...");
+  const functions = getFirebaseFunctions();
+  const getAllReviewsCallable = httpsCallable(functions, 'getAllReviews');
+  
+  try {
+    const result = await getAllReviewsCallable({ limit, offset });
+    return result.data;
+  } catch (error: unknown) {
+    console.error("Error fetching all reviews:", error);
+    let errorMessage = "An unknown error occurred.";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === "object" && error !== null && "message" in error) {
+      errorMessage = (error as { message: string }).message;
+    }
+    throw new Error(`Failed to fetch all reviews: ${errorMessage}`);
+  }
+}
+
+// New cloud function for getting review by token
+export async function getReviewByToken(reviewId: string, token: string): Promise<Review> {
+  console.log("Fetching review by token via cloud function...");
+  const functions = getFirebaseFunctions();
+  const getReviewByTokenCallable = httpsCallable(functions, 'getReviewByToken');
+  
+  try {
+    const result = await getReviewByTokenCallable({ reviewId, token });
+    return result.data.review;
+  } catch (error: unknown) {
+    console.error("Error fetching review by token:", error);
+    let errorMessage = "An unknown error occurred.";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === "object" && error !== null && "message" in error) {
+      errorMessage = (error as { message: string }).message;
+    }
+    throw new Error(`Failed to fetch review by token: ${errorMessage}`);
+  }
 }
 
 export async function getReviewById(id: string): Promise<Review | null> {
@@ -87,30 +109,17 @@ export async function hasReviewerSubmittedReview(submissionId: string, reviewerI
   return !querySnapshot.empty;
 }
 
-export async function submitReviewAsAdmin(reviewData: Omit<Review, 'id' | 'createdAt' | 'submissionDetails'>, submissionId: string): Promise<Review> {
-  console.log("Submitting review as admin to Firestore...");
+export async function submitReviewAsAdmin(reviewData: ReviewFormValues & { submissionId: string; reviewerId: string; createdAt: string; submissionDetails: { artistName: string; songTitle: string } }, reviewerId: string): Promise<void> {
+  console.log("Submitting review as admin via cloud function...");
+  const functions = getFirebaseFunctions();
+  const submitReviewCallable = httpsCallable(functions, 'submitReview');
+
   try {
-    const submission = await getSubmissionById(submissionId);
-    if (!submission) {
-      throw new Error(`Submission with ID ${submissionId} not found.`);
-    }
-
-    const batch = writeBatch(db);
-
-    const reviewRef = doc(collection(db, "reviews"));
-    const newReview: Omit<Review, 'id'> = {
+    await submitReviewCallable({
       ...reviewData,
-      createdAt: new Date().toISOString(),
-      submissionDetails: { artistName: submission.artistName, songTitle: submission.songTitle },
-    };
-    batch.set(reviewRef, newReview);
-
-    const submissionRef = doc(db, "submissions", submissionId);
-    batch.update(submissionRef, { status: SUBMISSION_STATUS.REVIEWED, reviewedAt: new Date().toISOString() });
-
-    await batch.commit();
-
-    return { ...newReview, id: reviewRef.id };
+      reviewerId
+    });
+    console.log("Review submitted successfully as admin");
   } catch (error: unknown) {
     console.error("Error submitting review as admin:", error);
     let errorMessage = "An unknown error occurred.";
@@ -119,6 +128,6 @@ export async function submitReviewAsAdmin(reviewData: Omit<Review, 'id' | 'creat
     } else if (typeof error === "object" && error !== null && "message" in error) {
       errorMessage = (error as { message: string }).message;
     }
-    throw new Error(`Failed to submit review as admin: ${errorMessage}`);
+    throw new Error(`Failed to submit review: ${errorMessage}`);
   }
 }

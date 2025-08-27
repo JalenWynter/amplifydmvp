@@ -1,17 +1,11 @@
 const admin = require('firebase-admin');
 
-// Production Firebase Admin SDK initialization
-// Comment out emulator settings for production
-// process.env.FIREBASE_AUTH_EMULATOR_HOST = '127.0.0.1:9099';
-// process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080';
+// Emulator settings for development
+process.env.FIREBASE_AUTH_EMULATOR_HOST = '127.0.0.1:9099';
+process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080';
 
-// Initialize Firebase Admin SDK for production
-// You need to download service account key from Firebase Console
-// Project Settings > Service Accounts > Generate New Private Key
-const serviceAccount = require('./serviceAccountKey.json');
-
+// Initialize Firebase Admin SDK for emulators
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
   projectId: 'amplifydmvp',
 });
 
@@ -21,27 +15,21 @@ const db = admin.firestore();
 const usersToSeed = [
   {
     email: 'jwynterthomas@gmail.com',
-    password: 'password123',
+    password: 'admin123',
     displayName: 'Admin User',
     role: 'admin',
   },
   {
     email: 'brenda.lee@amplifyd.com',
-    password: 'password123',
+    password: 'reviewer123',
     displayName: 'Brenda "Vocals" Lee',
     role: 'reviewer',
   },
   {
-    email: 'alex.chen@amplifyd.com',
-    password: 'password123',
-    displayName: 'Alex "Synth" Chen',
-    role: 'reviewer',
-  },
-  {
     email: 'cosmic@dreamer.com',
-    password: 'password123',
+    password: 'artist123',
     displayName: 'Cosmic Dreamer',
-    role: 'artist',
+    role: 'uploader',
   },
 ];
 
@@ -62,15 +50,15 @@ async function seedAuthAndFirestoreUsers() {
 
       // 2. Create corresponding user document in Firestore
       const userDocRef = db.collection('users').doc(uid);
-      await userDocRef.set({
-        id: uid,
-        email: user.email,
-        name: user.displayName,
-        role: user.role,
-        status: 'Active',
-        joinedAt: new Date().toISOString(),
-        avatarUrl: 'https://placehold.co/40x40.png',
-      });
+              await userDocRef.set({
+          id: uid,
+          email: user.email,
+          name: user.displayName,
+          role: user.role,
+          status: 'Active',
+          joinedAt: new Date().toISOString(),
+          avatarUrl: '/USETHIS.png',
+        });
       console.log(`Successfully created Firestore user document for ${user.email}`);
 
       // 3. If role is Reviewer, create corresponding reviewer document in Firestore
@@ -79,7 +67,7 @@ async function seedAuthAndFirestoreUsers() {
         await reviewerDocRef.set({
           id: uid,
           name: user.displayName,
-          avatarUrl: 'https://placehold.co/150x150.png',
+          avatarUrl: '/USETHIS.png',
           dataAiHint: user.displayName.includes('Brenda') ? 'woman portrait' : 'man portrait',
           turnaround: '3-5 days',
           genres: user.displayName.includes('Brenda') ? ['Pop', 'R&B', 'Vocal Performance'] : ['Electronic', 'Synthwave', 'Sound Design'],

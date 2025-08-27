@@ -16,48 +16,45 @@ export async function getPayoutById(id: string): Promise<Payout | null> {
   console.log(`Fetching payout ${id} from Firestore...`);
   const docRef = doc(db, "payouts", id);
   const docSnap = await getDoc(docRef);
-  if (docSnap.exists()) {
-    return { id: docSnap.id, ...docSnap.data() } as Payout;
+  return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } as Payout : null;
+}
+
+export async function createPayout(payoutData: Omit<Payout, 'id' | 'date' | 'status' | 'amount'> & { amountInCents: number }): Promise<void> {
+  console.log("Creating payout via cloud function...");
+  const functions = getFirebaseFunctions();
+  const createPayoutCallable = httpsCallable(functions, 'createPayout');
+
+  try {
+    await createPayoutCallable(payoutData);
+    console.log("Payout created successfully");
+  } catch (error: unknown) {
+    console.error("Error creating payout:", error);
+    let errorMessage = "An unknown error occurred.";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === "object" && error !== null && "message" in error) {
+      errorMessage = (error as { message: string }).message;
+    }
+    throw new Error(`Failed to create payout: ${errorMessage}`);
   }
-  return null;
 }
 
-export async function createPayout(payoutData: Omit<Payout, 'id' | 'date' | 'status' | 'amount'> & { amountInCents: number }): Promise<{ success: boolean, id: string, message: string }> {
-    console.log("Calling createPayout Cloud Function...");
-    const functions = getFirebaseFunctions();
-    const createPayoutCallable = httpsCallable(functions, 'createPayout');
+export async function updatePayoutStatus(payoutId: string, status: 'Pending' | 'Paid'): Promise<void> {
+  console.log(`Updating payout ${payoutId} status to ${status}...`);
+  const functions = getFirebaseFunctions();
+  const updatePayoutStatusCallable = httpsCallable(functions, 'updatePayoutStatus');
 
-    try {
-        const result = await createPayoutCallable(payoutData);
-        return result.data as { success: boolean, id: string, message: string };
-    } catch (error: unknown) {
-        console.error("Error calling createPayout Cloud Function:", error);
-        let errorMessage = "An unknown error occurred.";
-        if (error instanceof Error) {
-            errorMessage = error.message;
-        } else if (typeof error === "object" && error !== null && "message" in error) {
-            errorMessage = (error as { message: string }).message;
-        }
-        throw new Error(`Failed to create payout: ${errorMessage}`);
+  try {
+    await updatePayoutStatusCallable({ payoutId, status });
+    console.log(`Payout ${payoutId} status updated successfully`);
+  } catch (error: unknown) {
+    console.error("Error updating payout status:", error);
+    let errorMessage = "An unknown error occurred.";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === "object" && error !== null && "message" in error) {
+      errorMessage = (error as { message: string }).message;
     }
-}
-
-export async function updatePayoutStatus(payoutId: string, status: Payout['status']): Promise<{ success: boolean, message: string }> {
-    console.log(`Calling updatePayoutStatus Cloud Function for payout ${payoutId} to status ${status}`);
-    const functions = getFirebaseFunctions();
-    const updatePayoutStatusCallable = httpsCallable(functions, 'updatePayoutStatus');
-
-    try {
-        const result = await updatePayoutStatusCallable({ payoutId, status });
-        return result.data as { success: boolean, message: string };
-    } catch (error: unknown) {
-        console.error("Error calling updatePayoutStatus Cloud Function:", error);
-        let errorMessage = "An unknown error occurred.";
-        if (error instanceof Error) {
-            errorMessage = error.message;
-        } else if (typeof error === "object" && error !== null && "message" in error) {
-            errorMessage = (error as { message: string }).message;
-        }
-        throw new Error(`Failed to update payout status: ${errorMessage}`);
-    }
+    throw new Error(`Failed to update payout status: ${errorMessage}`);
+  }
 }

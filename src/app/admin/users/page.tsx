@@ -8,7 +8,7 @@ import Link from "next/link";
 import { MoreHorizontal, UserPlus, Users, Loader2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { getUsers, updateUserRole, updateUserStatus } from '@/lib/firebase/admin/users';
-import { User, UserSchema } from '@/lib/types';
+import { User, UserSchema, UserRole } from '@/lib/types';
 import { useState, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";

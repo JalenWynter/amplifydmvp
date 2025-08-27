@@ -1,225 +1,223 @@
 'use client';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import Link from "next/link";
-import { Eye, FileText, Loader2, Star, Clock, User, Music2, MoreHorizontal } from "lucide-react";
-import { useState, useEffect } from "react";
-import { getSubmissionsForAdmin, getReviewers, updateSubmissionStatus, assignReviewerToSubmission } from "@/lib/firebase/services";
-import { Submission, Reviewer } from '@/lib/types';
-import { Skeleton } from "@/components/ui/skeleton";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { useToast } from "@/hooks/use-toast";
-
-function SubmissionRowSkeleton() {
-    return (
-        <TableRow>
-            <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-            <TableCell><Skeleton className="h-4 w-48" /></TableCell>
-            <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-            <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-            <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-            <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-            <TableCell><Skeleton className="h-9 w-32" /></TableCell>
-        </TableRow>
-    )
-}
-
-function EmptyState() {
-    return (
-        <TableRow>
-            <TableCell colSpan={7}>
-                <div className="text-center py-10">
-                    <Music2 className="mx-auto h-12 w-12 text-gray-400" />
-                    <h3 className="mt-2 text-sm font-medium text-gray-900">No Submissions Found</h3>
-                    <p className="mt-1 text-sm text-gray-500">There are no submissions in the system yet.</p>
-                </div>
-            </TableCell>
-        </TableRow>
-    )
-}
-
-function getStatusBadgeVariant(status: string) {
-    switch (status) {
-        case 'pending':
-            return 'bg-yellow-100 text-yellow-800';
-        case 'in-progress':
-            return 'bg-blue-100 text-blue-800';
-        case 'completed':
-            return 'bg-green-100 text-green-800';
-        case 'rejected':
-            return 'bg-red-100 text-red-800';
-        default:
-            return 'bg-gray-100 text-gray-800';
-    }
-}
+import { useEffect, useState } from 'react';
+import { getSubmissionsForAdmin } from '@/lib/firebase/submissions';
+import { getTransactions } from '@/lib/firebase/transactions';
+import { Submission, Transaction } from '@/lib/types';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Loader2, Music, DollarSign, Calendar, User, Mail } from 'lucide-react';
+import Link from 'next/link';
 
 export default function AdminSubmissionsPage() {
-    const [submissions, setSubmissions] = useState<Submission[]>([]);
-    const [reviewers, setReviewers] = useState<Reviewer[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [updatingId, setUpdatingId] = useState<string | null>(null);
-    const { toast } = useToast();
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-    const fetchSubmissions = async () => {
-        setIsLoading(true);
-        const [fetchedSubmissions, fetchedReviewers] = await Promise.all([
-            getSubmissionsForAdmin(),
-            getReviewers()
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [fetchedSubmissions, fetchedTransactions] = await Promise.all([
+          getSubmissionsForAdmin(),
+          getTransactions()
         ]);
         setSubmissions(fetchedSubmissions);
-        setReviewers(fetchedReviewers);
-        setIsLoading(false);
-    };
+        setTransactions(fetchedTransactions);
+      } catch (err) {
+        console.error("Error fetching data:", err);
+        setError("Failed to load submissions and transactions.");
+      } finally {
+        setLoading(false);
+      }
+    }
 
-    useEffect(() => {
-        fetchSubmissions();
-    }, []);
+    fetchData();
+  }, []);
 
-    const getReviewerName = (reviewerId: string) => {
-        const reviewer = reviewers.find(r => r.id === reviewerId);
-        return reviewer?.name || 'Unknown';
-    };
+  // Create a map of transactions by session ID for quick lookup
+  const transactionMap = new Map<string, Transaction>();
+  transactions.forEach(transaction => {
+    if (transaction.stripeSessionId) {
+      transactionMap.set(transaction.stripeSessionId, transaction);
+    }
+  });
 
-    const onStatusUpdate = async (submissionId: string, newStatus: Submission['status']) => {
-        setUpdatingId(submissionId);
-        try {
-            await updateSubmissionStatus(submissionId, newStatus);
-            toast({ title: "Submission Status Updated", description: `Submission ${submissionId} status changed to ${newStatus}.` });
-            fetchSubmissions(); // Re-fetch data to update UI
-        } catch (error: unknown) {
-            console.error("Error updating submission status:", error);
-            let errorMessage = "An unknown error occurred.";
-            if (error instanceof Error) {
-                errorMessage = error.message;
-            } else if (typeof error === "object" && error !== null && "message" in error) {
-                errorMessage = (error as { message: string }).message;
-            }
-            toast({ title: "Error", description: errorMessage || "Failed to update submission status.", variant: "destructive" });
-        } finally {
-            setUpdatingId(null);
-        }
-    };
-
-    const onAssignReviewer = async (submissionId: string, reviewerId: string) => {
-        setUpdatingId(submissionId);
-        try {
-            await assignReviewerToSubmission(submissionId, reviewerId);
-            const assignedReviewer = reviewers.find(r => r.id === reviewerId)?.name || 'Unknown';
-            toast({ title: "Reviewer Assigned", description: `Submission ${submissionId} assigned to ${assignedReviewer}.` });
-            fetchSubmissions(); // Re-fetch data to update UI
-        } catch (error: unknown) {
-            console.error("Error assigning reviewer:", error);
-            let errorMessage = "An unknown error occurred.";
-            if (error instanceof Error) {
-                errorMessage = error.message;
-            } else if (typeof error === "object" && error !== null && "message" in error) {
-                errorMessage = (error as { message: string }).message;
-            }
-            toast({ title: "Error", description: errorMessage || "Failed to assign reviewer.", variant: "destructive" });
-        } finally {
-            setUpdatingId(null);
-        }
-    };
-
+  if (loading) {
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>All Submissions</CardTitle>
-                <CardDescription>
-                    Manage all track submissions and complete reviews on behalf of reviewers.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Artist</TableHead>
-                            <TableHead>Track Title</TableHead>
-                            <TableHead>Genre</TableHead>
-                            <TableHead>Assigned Reviewer</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Submitted</TableHead>
-                            <TableHead><span className="sr-only">Actions</span></TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {isLoading ? (
-                            Array.from({length: 8}).map((_, i) => <SubmissionRowSkeleton key={i} />)
-                        ) : submissions.length > 0 ? (
-                            submissions.map((submission) => (
-                                <TableRow key={submission.id}>
-                                    <TableCell className="font-medium max-w-[200px] truncate" title={submission.artistName}>{submission.artistName}</TableCell>
-                                    <TableCell className="max-w-[250px] truncate" title={submission.songTitle}>{submission.songTitle}</TableCell>
-                                    <TableCell className="max-w-[150px] truncate" title={submission.genre}>{submission.genre}</TableCell>
-                                    <TableCell>
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="outline" size="sm" disabled={updatingId === submission.id}>
-                                                    {updatingId === submission.id ? <Loader2 className="h-4 w-4 animate-spin" /> : getReviewerName(submission.reviewerId)}
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="start">
-                                                {reviewers.map(reviewer => (
-                                                    <DropdownMenuItem
-                                                        key={reviewer.id}
-                                                        onClick={() => onAssignReviewer(submission.id, reviewer.id)}
-                                                        disabled={submission.reviewerId === reviewer.id || updatingId === submission.id}
-                                                    >
-                                                        {reviewer.name}
-                                                    </DropdownMenuItem>
-                                                ))}
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </TableCell>
-                                    <TableCell>
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Badge variant={'secondary'} className={getStatusBadgeVariant(submission.status)}>
-                                                    {updatingId === submission.id ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : submission.status}
-                                                </Badge>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="start">
-                                                {['pending', 'in-progress', 'completed', 'rejected'].map(status => (
-                                                    <DropdownMenuItem
-                                                        key={status}
-                                                        onClick={() => onStatusUpdate(submission.id, status as Submission['status'])}
-                                                        disabled={submission.status === status || updatingId === submission.id}
-                                                    >
-                                                        {status}
-                                                    </DropdownMenuItem>
-                                                ))}
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-2">
-                                            <Clock className="w-4 h-4 text-muted-foreground" />
-                                            <span className="text-sm">
-                                                {new Date(submission.submittedAt).toLocaleDateString()}
-                                            </span>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <div className="flex items-center gap-2">
-                                            <Button asChild size="sm" variant="outline">
-                                                <Link href={`/admin/submissions/${submission.id}`}>
-                                                    <Eye className="mr-2 h-4 w-4" />
-                                                    {submission.status === 'pending' ? 'Review' : 'View'}
-                                                </Link>
-                                            </Button>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        ) : (
-                           <EmptyState />
-                        )}
-                    </TableBody>
-                </Table>
-            </CardContent>
-        </Card>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
     );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-20">
+        <h1 className="text-2xl font-bold text-destructive">Error</h1>
+        <p className="text-muted-foreground">{error}</p>
+      </div>
+    );
+  }
+
+  const totalRevenue = submissions.reduce((sum, sub) => sum + (sub.amount || 0), 0);
+  const pendingSubmissions = submissions.filter(sub => sub.status === 'pending').length;
+  const completedSubmissions = submissions.filter(sub => sub.status === 'completed').length;
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-3xl font-bold font-headline">Submissions & Transactions</h1>
+        <p className="text-muted-foreground">Complete oversight of all music submissions and payment transactions.</p>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Submissions</CardTitle>
+            <Music className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{submissions.length}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${(totalRevenue / 100).toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground">From {transactions.length} transactions</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pending Reviews</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{pendingSubmissions}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Completed Reviews</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{completedSubmissions}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Submissions List */}
+      <div className="space-y-4">
+        <h2 className="text-2xl font-semibold">All Submissions</h2>
+        {submissions.length === 0 ? (
+          <Card>
+            <CardContent className="text-center py-12">
+              <Music className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-lg font-medium">No Submissions</h3>
+              <p className="text-sm text-muted-foreground">No music submissions have been made yet.</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4">
+            {submissions.map((submission) => {
+              const transaction = transactionMap.get(submission.stripeSessionId || '');
+              const amount = submission.amount || transaction?.amount || 0;
+              
+              return (
+                <Card key={submission.id}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          {submission.songTitle}
+                          <Badge variant={submission.status === 'pending' ? 'secondary' : 'default'}>
+                            {submission.status}
+                          </Badge>
+                        </CardTitle>
+                        <CardDescription>by {submission.artistName}</CardDescription>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold text-green-600">
+                          ${(amount / 100).toFixed(2)}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {submission.currency?.toUpperCase() || 'USD'}
+                        </div>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Music className="w-4 h-4 text-muted-foreground" />
+                        <span className="font-medium">Genre:</span>
+                        <span>{submission.genre}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <User className="w-4 h-4 text-muted-foreground" />
+                        <span className="font-medium">Reviewer:</span>
+                        <span>{submission.reviewerId}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Mail className="w-4 h-4 text-muted-foreground" />
+                        <span className="font-medium">Contact:</span>
+                        <span>{submission.contactEmail}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-muted-foreground" />
+                        <span className="font-medium">Submitted:</span>
+                        <span>{new Date(submission.submittedAt).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+
+                    {submission.packageName && (
+                      <div className="text-sm">
+                        <span className="font-medium">Package:</span> {submission.packageName}
+                        {submission.packageDescription && (
+                          <span className="text-muted-foreground ml-2">- {submission.packageDescription}</span>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="text-sm space-y-1">
+                      <div><span className="font-medium">Payment Intent ID:</span> {submission.paymentIntentId}</div>
+                      {submission.stripeSessionId && (
+                        <div><span className="font-medium">Stripe Session ID:</span> {submission.stripeSessionId}</div>
+                      )}
+                      <div><span className="font-medium">Tracking Token:</span> {submission.trackingToken}</div>
+                    </div>
+
+                    <div className="flex gap-2 pt-2">
+                      <Button asChild size="sm">
+                        <Link href={`/dashboard/reviewer/${submission.id}`}>
+                          View Submission
+                        </Link>
+                      </Button>
+                      {transaction && (
+                        <Button variant="outline" size="sm" asChild>
+                          <Link href={`/admin/transactions`}>
+                            View Transaction
+                          </Link>
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 } 
